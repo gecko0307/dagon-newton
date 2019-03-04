@@ -32,7 +32,6 @@ class NewtonBodyController: EntityController
     {
         super(e);
         
-        // TODO: pass user shape in constructor
         NewtonCollision* collision = NewtonCreateBox(world, extents.x, extents.y, extents.z, 0, null);
         
         Quaternionf rot = e.rotation;
@@ -75,7 +74,7 @@ class TestScene: Scene
     TextLine text;
 
     NewtonWorld* world;
-    NewtonBodyController[10] cubeBodyControllers;
+    NewtonBodyController[] cubeBodyControllers;
 
     this(SceneManager smngr)
     {
@@ -87,6 +86,8 @@ class TestScene: Scene
         NewtonMaterialDestroyAllGroupID(world);
         NewtonDestroyAllBodies(world);
         NewtonDestroy(world);
+        
+        Delete(cubeBodyControllers);
     }
 
     override void onAssetsRequest()
@@ -100,20 +101,19 @@ class TestScene: Scene
     {
         super.onAllocate();
         
-        environment.sunEnergy = 50.0f;
-        
         world = NewtonCreate();
         version(x86)
             NewtonLoadPlugins(world, "plugins/x64");
         else
             NewtonLoadPlugins(world, "plugins/x64");
         void* p = NewtonGetPreferedPlugin(world);
-        writeln(NewtonGetPluginString(world, p).to!string);
+        writeln("Selected plugin: ", NewtonGetPluginString(world, p).to!string);
         
         view = New!Freeview(eventManager, assetManager);
         
         mainSun = createLightSun(Quaternionf.identity, environment.sunColor, environment.sunEnergy);
         mainSun.shadow = true;
+        environment.sunEnergy = 50.0f;
         environment.setDayTime(9, 00, 00);
         
         auto rRayleighShader = New!RayleighShader(assetManager);
@@ -123,7 +123,6 @@ class TestScene: Scene
         auto eSky = createSky(rayleighSkyMaterial);
         
         renderer.hdr.tonemapper = Tonemapper.ACES;
-        renderer.hdr.autoExposure = false;
         renderer.hdr.exposure = 0.3f;
         renderer.ssao.enabled = true;
         renderer.ssao.power = 10.0;
@@ -137,6 +136,7 @@ class TestScene: Scene
         auto matCube = createMaterial();
         matCube.diffuse = Color4f(1.0, 0.5, 0.3, 1.0);
 
+        cubeBodyControllers = New!(NewtonBodyController[])(100);
         foreach(i; 0..cubeBodyControllers.length)
         {
             auto eCube = createEntity3D();
@@ -184,10 +184,10 @@ class TestScene: Scene
                 cubeBodyControllers[i].force.y = 20.0f;
         if (eventManager.keyPressed[KEY_LEFT])
             foreach(i; 0..cubeBodyControllers.length)
-                cubeBodyControllers[i].force.x = 20.0f;
+                cubeBodyControllers[i].force.x = -20.0f;
         if (eventManager.keyPressed[KEY_RIGHT])
             foreach(i; 0..cubeBodyControllers.length)
-                cubeBodyControllers[i].force.x = -20.0f;
+                cubeBodyControllers[i].force.x = 20.0f;
     
         NewtonUpdate(world, dt);
         
