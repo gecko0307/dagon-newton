@@ -102,8 +102,9 @@ class TestScene: Scene
         super.onAllocate();
         
         world = NewtonCreate();
-        version(x86)
-            NewtonLoadPlugins(world, "plugins/x64");
+        
+        version(X86)
+            NewtonLoadPlugins(world, "plugins/x86");
         else
             NewtonLoadPlugins(world, "plugins/x64");
         void* p = NewtonGetPreferedPlugin(world);
