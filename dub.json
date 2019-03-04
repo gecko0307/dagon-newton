@@ -1,0 +1,37 @@
+{
+    "name": "main",
+    "description": "",
+    "homepage": "",
+    "license": "Boost",
+    "authors": [
+        "Timur Gafarov"
+    ],
+    
+    "dependencies": {
+        "bindbc-loader": "~>0.1.1",
+		"dlib": "~master",
+        "dagon": "~master"
+    },
+
+    "importPaths": [
+        "src"
+    ],
+
+    "buildRequirements":[
+        "allowWarnings"
+    ],
+
+    "sourcePaths": ["src"],
+    "mainSourceFile": "src/main.d",
+
+    "configurations": [
+        {
+            "name": "application",
+            "targetType": "executable"
+        }
+    ],
+    
+    "copyFiles-windows-x86" : ["lib/x86/*.dll"],
+    "copyFiles-windows-x86_64" : ["lib/x64/*.dll"]
+}
+
