@@ -136,6 +136,7 @@ class TestScene: Scene
         
         auto matCube = createMaterial();
         matCube.diffuse = Color4f(1.0, 0.5, 0.3, 1.0);
+        matCube.roughness = 0.4f;
 
         cubeBodyControllers = New!(NewtonBodyController[])(100);
         foreach(i; 0..cubeBodyControllers.length)
