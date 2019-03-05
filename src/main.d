@@ -14,7 +14,7 @@ class TestScene: Scene
 
     NewtonPhysicsWorld world;
     NewtonBodyController[] cubeBodyControllers;
-    size_t numCubes = 10;
+    size_t numCubes = 100;
 
     this(SceneManager smngr)
     {
@@ -72,7 +72,7 @@ class TestScene: Scene
         matCube.diffuse = Color4f(1.0, 0.5, 0.3, 1.0);
         matCube.roughness = 0.4f;
         
-        auto box = New!NewtonBoxShape(Vector3f(1, 1, 1), world, assetManager);
+        auto box = New!NewtonBoxShape(Vector3f(1, 1, 1), world);
 
         cubeBodyControllers = New!(NewtonBodyController[])(numCubes);
         foreach(i; 0..cubeBodyControllers.length)
@@ -86,7 +86,7 @@ class TestScene: Scene
             eCube.controller = cubeBodyControllers[i];
         }
         
-        auto boxFloor = New!NewtonBoxShape(Vector3f(50, 1, 50), world, assetManager);
+        auto boxFloor = New!NewtonBoxShape(Vector3f(50, 1, 50), world);
         
         auto eFloor = createEntity3D();
         eFloor.position = Vector3f(0, -0.5, 0);

@@ -75,9 +75,9 @@ abstract class NewtonCollisionShape: Owner
     NewtonPhysicsWorld world;
     NewtonCollision* newtonCollision;
     
-    this(NewtonPhysicsWorld world, Owner o)
+    this(NewtonPhysicsWorld world)
     {
-        super(o);
+        super(world);
         this.world = world;
     }
     
@@ -98,9 +98,9 @@ class NewtonBoxShape: NewtonCollisionShape
 {
     Vector3f halfSize;
     
-    this(Vector3f extents, NewtonPhysicsWorld world, Owner o)
+    this(Vector3f extents, NewtonPhysicsWorld world)
     {
-        super(world, o);
+        super(world);
         newtonCollision = NewtonCreateBox(world.newtonWorld, extents.x, extents.y, extents.z, 0, null);
         halfSize = extents * 0.5f;
     }
@@ -122,9 +122,9 @@ class NewtonSphereShape: NewtonCollisionShape
 {
     float radius;
     
-    this(float radius, NewtonPhysicsWorld world, Owner o)
+    this(float radius, NewtonPhysicsWorld world)
     {
-        super(world, o);
+        super(world);
         this.radius = radius;
         newtonCollision = NewtonCreateSphere(world.newtonWorld, radius, 0, null);
     }
