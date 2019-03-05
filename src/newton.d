@@ -118,6 +118,24 @@ class NewtonBoxShape: NewtonCollisionShape
     }
 }
 
+class NewtonSphereShape: NewtonCollisionShape
+{
+    float radius;
+    
+    this(float radius, NewtonPhysicsWorld world, Owner o)
+    {
+        super(world, o);
+        this.radius = radius;
+        newtonCollision = NewtonCreateSphere(world.newtonWorld, radius, 0, null);
+    }
+    
+    override Vector3f inertia(float mass)
+    {
+        float v = 0.4f * mass * radius * radius;
+        return Vector3f(v, v, v);
+    }
+}
+
 class NewtonRigidBody: Owner
 {
     NewtonPhysicsWorld world;
