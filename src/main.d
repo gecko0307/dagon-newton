@@ -71,6 +71,8 @@ class TestScene: Scene
         auto matCube = createMaterial();
         matCube.diffuse = Color4f(1.0, 0.5, 0.3, 1.0);
         matCube.roughness = 0.4f;
+        
+        auto box = New!NewtonBoxShape(Vector3f(1, 1, 1), world, assetManager);
 
         cubeBodyControllers = New!(NewtonBodyController[])(numCubes);
         foreach(i; 0..cubeBodyControllers.length)
@@ -79,14 +81,16 @@ class TestScene: Scene
             eCube.drawable = aCubeMesh.mesh;
             eCube.material = matCube;
             eCube.position = Vector3f(0, i * 1.5, 0);
-            auto b = world.createBody(Vector3f(1, 1, 1), 1.0f);
+            auto b = world.createDynamicBody(box, 1.0f);
             cubeBodyControllers[i] = New!NewtonBodyController(eCube, b);
             eCube.controller = cubeBodyControllers[i];
         }
         
+        auto boxFloor = New!NewtonBoxShape(Vector3f(50, 1, 50), world, assetManager);
+        
         auto eFloor = createEntity3D();
         eFloor.position = Vector3f(0, -0.5, 0);
-        auto b = world.createBody(Vector3f(50, 1, 50), 0.0f);
+        auto b = world.createStaticBody(boxFloor);
         auto planeBodyController = New!NewtonBodyController(eFloor, b);
         eFloor.controller = planeBodyController;
         

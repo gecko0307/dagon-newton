@@ -19,7 +19,6 @@ extern(C) nothrow @nogc void newtonBodyForceCallback(const NewtonBody* nbody, dF
 	NewtonRigidBody b = cast(NewtonRigidBody)NewtonBodyGetUserData(nbody);
     if (b)
     {
-        NewtonBodyGetMass(nbody, &b.mass, &b.inertia[0], &b.inertia[1], &b.inertia[2]);
         Vector3f gravityForce = b.gravity * b.mass;
         NewtonBodyAddForce(nbody, gravityForce.arrayof.ptr);
         NewtonBodyAddForce(nbody, b.force.arrayof.ptr);
@@ -51,11 +50,16 @@ class NewtonPhysicsWorld: Owner
         NewtonUpdate(newtonWorld, dt);
     }
     
-    NewtonRigidBody createBody(Vector3f extents, float mass)
+    NewtonRigidBody createDynamicBody(NewtonCollisionShape shape, float mass)
     {
-        NewtonRigidBody b = New!NewtonRigidBody(extents, mass, this, this);
+        NewtonRigidBody b = New!NewtonRigidBody(shape, mass, this, this);
         // TODO: store a list of bodies
         return b;
+    }
+    
+    NewtonRigidBody createStaticBody(NewtonCollisionShape shape)
+    {
+        return createDynamicBody(shape, 0.0f);
     }
     
     ~this()
@@ -63,6 +67,54 @@ class NewtonPhysicsWorld: Owner
         NewtonMaterialDestroyAllGroupID(newtonWorld);
         NewtonDestroyAllBodies(newtonWorld);
         NewtonDestroy(newtonWorld);
+    }
+}
+
+abstract class NewtonCollisionShape: Owner
+{
+    NewtonPhysicsWorld world;
+    NewtonCollision* newtonCollision;
+    
+    this(NewtonPhysicsWorld world, Owner o)
+    {
+        super(o);
+        this.world = world;
+    }
+    
+    ~this()
+    {
+        if (newtonCollision)
+            NewtonDestroyCollision(newtonCollision);
+    }
+    
+    // Override me
+    Vector3f inertia(float mass)
+    {
+        return Vector3f(mass, mass, mass);
+    }
+}
+
+class NewtonBoxShape: NewtonCollisionShape
+{
+    Vector3f halfSize;
+    
+    this(Vector3f extents, NewtonPhysicsWorld world, Owner o)
+    {
+        super(world, o);
+        newtonCollision = NewtonCreateBox(world.newtonWorld, extents.x, extents.y, extents.z, 0, null);
+        halfSize = extents * 0.5f;
+    }
+    
+    override Vector3f inertia(float mass)
+    {
+        float x2 = halfSize.x * halfSize.x;
+        float y2 = halfSize.y * halfSize.y;
+        float z2 = halfSize.z * halfSize.z;
+        return Vector3f(
+            (y2 + z2)/3 * mass,
+            (x2 + z2)/3 * mass,
+            (x2 + y2)/3 * mass
+        );
     }
 }
 
@@ -79,20 +131,17 @@ class NewtonRigidBody: Owner
     Quaternionf rotation = Quaternionf.identity;
     Matrix4x4f transformation = Matrix4x4f.identity;
 
-    this(Vector3f extents, float mass, NewtonPhysicsWorld world, Owner o)
+    this(NewtonCollisionShape shape, float mass, NewtonPhysicsWorld world, Owner o)
     {
         super(o);
         
         this.world = world;
-        
-        // TODO: user-defined shapes
-        NewtonCollision* collision = NewtonCreateBox(world.newtonWorld, extents.x, extents.y, extents.z, 0, null);
-        newtonBody = NewtonCreateDynamicBody(world.newtonWorld, collision, transformation.arrayof.ptr);
+
+        newtonBody = NewtonCreateDynamicBody(world.newtonWorld, shape.newtonCollision, transformation.arrayof.ptr);
         NewtonBodySetUserData(newtonBody, cast(void*)this);
-        NewtonDestroyCollision(collision);
-        // TODO: compute inertia from shape
         this.mass = mass;
-        NewtonBodySetMassMatrix(newtonBody, mass, mass, mass, mass);
+        this.inertia = shape.inertia(mass);
+        NewtonBodySetMassMatrix(newtonBody, mass, inertia.x, inertia.y, inertia.z);
         NewtonBodySetForceAndTorqueCallback(newtonBody, &newtonBodyForceCallback);
     }
     
