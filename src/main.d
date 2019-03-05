@@ -2,88 +2,7 @@ import std.stdio;
 import std.conv;
 
 import dagon;
-import bindbc.newton;
-
-extern(C) nothrow @nogc void newtonBodyForceCallback(const NewtonBody* nbody, dFloat timestep, int threadIndex)
-{
-	NewtonRigidBody b = cast(NewtonRigidBody)NewtonBodyGetUserData(nbody);
-    if (b)
-    {
-        NewtonBodyGetMass(nbody, &b.mass, &b.inertia[0], &b.inertia[1], &b.inertia[2]);
-        Vector3f gravityForce = b.gravity * b.mass;
-        NewtonBodyAddForce(nbody, gravityForce.arrayof.ptr);
-        NewtonBodyAddForce(nbody, b.force.arrayof.ptr);
-        NewtonBodyAddTorque(nbody, b.torque.arrayof.ptr);
-        b.force = Vector3f(0.0f, 0.0f, 0.0f);
-        b.torque = Vector3f(0.0f, 0.0f, 0.0f);
-    }
-}
-
-class NewtonRigidBody: Owner
-{
-    NewtonBody* newtonBody;
-    float mass;
-    Vector3f inertia;
-    Vector3f gravity = Vector3f(0.0f, -9.8f, 0.0f);
-    Vector3f force = Vector3f(0.0f, 0.0f, 0.0f);
-    Vector3f torque = Vector3f(0.0f, 0.0f, 0.0f);
-    Vector4f position = Vector4f(0.0f, 0.0f, 0.0f, 1.0f);
-    Quaternionf rotation = Quaternionf.identity;
-    Matrix4x4f transformation = Matrix4x4f.identity;
-
-    this(Vector3f extents, float mass, NewtonWorld* world, Owner o)
-    {
-        super(o);
-        
-        // TODO: user-defined shapes
-        NewtonCollision* collision = NewtonCreateBox(world, extents.x, extents.y, extents.z, 0, null);
-        newtonBody = NewtonCreateDynamicBody(world, collision, transformation.arrayof.ptr);
-        NewtonBodySetUserData(newtonBody, cast(void*)this);
-        NewtonDestroyCollision(collision);
-        // TODO: compute inertia from shape
-        this.mass = mass;
-        NewtonBodySetMassMatrix(newtonBody, mass, mass, mass, mass);
-        NewtonBodySetForceAndTorqueCallback(newtonBody, &newtonBodyForceCallback);
-    }
-    
-    void update(double dt)
-    {
-        NewtonBodyGetPosition(newtonBody, position.arrayof.ptr);        
-        NewtonBodyGetMatrix(newtonBody, transformation.arrayof.ptr);        
-        rotation = Quaternionf.fromMatrix(transformation);
-    }
-}
-
-class NewtonBodyController: EntityController
-{
-    NewtonRigidBody rbody;
-    
-    this(Entity e, NewtonRigidBody b)
-    {
-        super(e);
-        rbody = b;
-        
-        Quaternionf rot = e.rotation;
-        if (e.useRotationAngles)
-            rot *= rotationQuaternion!float(Axis.x, degtorad(e.angles.x)) *
-                   rotationQuaternion!float(Axis.y, degtorad(e.angles.y)) * 
-                   rotationQuaternion!float(Axis.z, degtorad(e.angles.z));
-        rbody.transformation = 
-            translationMatrix(e.position) *
-            rot.toMatrix4x4;
-        
-        NewtonBodySetMatrix(rbody.newtonBody, rbody.transformation.arrayof.ptr);
-    }
-
-    override void update(double dt)
-    {
-        rbody.update(dt);
-        entity.position = rbody.position.xyz;
-        entity.transformation = rbody.transformation * scaleMatrix(entity.scaling);
-        entity.invTransformation = entity.transformation.inverse;
-        entity.rotation = rbody.rotation;
-    }
-}
+import newton;
 
 class TestScene: Scene
 {
@@ -93,9 +12,9 @@ class TestScene: Scene
     
     TextLine text;
 
-    NewtonWorld* world;
+    NewtonPhysicsWorld world;
     NewtonBodyController[] cubeBodyControllers;
-    size_t numCubes = 1;
+    size_t numCubes = 10;
 
     this(SceneManager smngr)
     {
@@ -104,10 +23,6 @@ class TestScene: Scene
     
     ~this()
     {
-        NewtonMaterialDestroyAllGroupID(world);
-        NewtonDestroyAllBodies(world);
-        NewtonDestroy(world);
-        
         Delete(cubeBodyControllers);
     }
 
@@ -122,14 +37,12 @@ class TestScene: Scene
     {
         super.onAllocate();
         
-        world = NewtonCreate();
+        world = New!NewtonPhysicsWorld(assetManager);
         
         version(X86)
-            NewtonLoadPlugins(world, "plugins/x86");
+            world.loadPlugins("plugins/x86");
         else
-            NewtonLoadPlugins(world, "plugins/x64");
-        void* p = NewtonGetPreferedPlugin(world);
-        writeln("Selected plugin: ", NewtonGetPluginString(world, p).to!string);
+            world.loadPlugins("plugins/x64");
         
         view = New!Freeview(eventManager, assetManager);
         
@@ -166,14 +79,14 @@ class TestScene: Scene
             eCube.drawable = aCubeMesh.mesh;
             eCube.material = matCube;
             eCube.position = Vector3f(0, i * 1.5, 0);
-            auto b = New!NewtonRigidBody(Vector3f(1, 1, 1), 1.0f, world, assetManager);
+            auto b = world.createBody(Vector3f(1, 1, 1), 1.0f);
             cubeBodyControllers[i] = New!NewtonBodyController(eCube, b);
             eCube.controller = cubeBodyControllers[i];
         }
         
         auto eFloor = createEntity3D();
         eFloor.position = Vector3f(0, -0.5, 0);
-        auto b = New!NewtonRigidBody(Vector3f(50, 1, 50), 0.0f, world, assetManager);
+        auto b = world.createBody(Vector3f(50, 1, 50), 0.0f);
         auto planeBodyController = New!NewtonBodyController(eFloor, b);
         eFloor.controller = planeBodyController;
         
@@ -184,8 +97,6 @@ class TestScene: Scene
         auto ePlane = createEntity3D();
         ePlane.drawable = New!ShapePlane(50, 50, 10, assetManager);
         ePlane.material = matPlane;
-        
-        NewtonInvalidateCache(world);
         
         text = New!TextLine(aFontDroidSans14.font, "0", assetManager);
         text.color = Color4f(1.0f, 1.0f, 1.0f, 0.7f);
@@ -217,8 +128,8 @@ class TestScene: Scene
         if (eventManager.keyPressed[KEY_RIGHT])
             foreach(i; 0..cubeBodyControllers.length)
                 cubeBodyControllers[i].rbody.force.x = 20.0f;
-    
-        NewtonUpdate(world, dt);
+
+        world.update(dt);
         
         uint n = sprintf(txt.ptr, "FPS: %u", eventManager.fps);
         string s = cast(string)txt[0..n];
