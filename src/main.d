@@ -23,7 +23,8 @@ class TestScene: Scene
     
     ~this()
     {
-        Delete(cubeBodyControllers);
+        if (cubeBodyControllers.length)
+            Delete(cubeBodyControllers);
     }
 
     override void onAssetsRequest()
@@ -64,9 +65,11 @@ class TestScene: Scene
         renderer.glow.enabled = true;
         renderer.glow.radius = 8;
         renderer.glow.brightness = 0.5;
-        renderer.glow.minLuminanceThreshold = 0.0;
-        renderer.glow.maxLuminanceThreshold = 5.0;
+        renderer.glow.luminanceThreshold = 1.5;
         renderer.antiAliasing.enabled = true;
+        renderer.motionBlur.enabled = true;
+        renderer.motionBlur.shutterSpeed = 1.0 / 24.0;
+        renderer.motionBlur.samples = 30;
         
         auto matCube = createMaterial();
         matCube.diffuse = Color4f(1.0, 0.5, 0.3, 1.0);
@@ -85,6 +88,13 @@ class TestScene: Scene
             cubeBodyControllers[i] = New!NewtonBodyController(eCube, b);
             eCube.controller = cubeBodyControllers[i];
         }
+        
+        auto sphere = New!NewtonSphereShape(1.0f, world);
+        auto eCharacter = createEntity3D();
+        eCharacter.drawable = New!ShapeSphere(1.0f, 24, 16, false, assetManager);
+        eCharacter.material = matCube;
+        eCharacter.position = Vector3f(5, 1, 0);
+        auto bCharacter = world.createDynamicBody(sphere, 1.0f);
         
         auto boxFloor = New!NewtonBoxShape(Vector3f(50, 1, 50), world);
         
@@ -113,16 +123,19 @@ class TestScene: Scene
     {
         if (key == KEY_ESCAPE)
             exitApplication();
+        /*
         else if (key == KEY_P)
         {
             writeln(cubeBodyControllers[0].entity.position);
         }
+        */
     }
     
     char[100] txt;
     
     override void onLogicsUpdate(double dt)
     {
+        /*
         if (eventManager.keyPressed[KEY_UP])
             foreach(i; 0..cubeBodyControllers.length)
                 cubeBodyControllers[i].rbody.force.y = 20.0f;
@@ -132,6 +145,7 @@ class TestScene: Scene
         if (eventManager.keyPressed[KEY_RIGHT])
             foreach(i; 0..cubeBodyControllers.length)
                 cubeBodyControllers[i].rbody.force.x = 20.0f;
+        */
 
         world.update(dt);
         
