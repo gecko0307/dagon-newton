@@ -179,6 +179,24 @@ class NewtonRigidBody: Owner
     {
         torque += t;
     }
+    
+    void createUpVectorConstraint()
+    {
+        Vector3f up = Vector3f(0.0f, 1.0f, 0.0f);
+        NewtonJoint* joint = NewtonConstraintCreateUpVector(world.newtonWorld, up.arrayof.ptr, newtonBody);
+    }
+    
+    void velocity(Vector3f v) @property
+    {
+        NewtonBodySetVelocity(newtonBody, v.arrayof.ptr);
+    }
+    
+    Vector3f velocity() @property
+    {
+        Vector3f v;
+        NewtonBodyGetVelocity(newtonBody, v.arrayof.ptr);
+        return v;
+    }
 }
 
 class NewtonBodyController: EntityController

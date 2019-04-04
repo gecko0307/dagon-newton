@@ -15,6 +15,8 @@ class TestScene: Scene
     NewtonPhysicsWorld world;
     NewtonBodyController[] cubeBodyControllers;
     size_t numCubes = 100;
+    
+    NewtonBodyController bCharacterController;
 
     this(SceneManager smngr)
     {
@@ -75,6 +77,10 @@ class TestScene: Scene
         matCube.diffuse = Color4f(1.0, 0.5, 0.3, 1.0);
         matCube.roughness = 0.4f;
         
+        auto matBall = createMaterial();
+        matBall.diffuse = Color4f(0.7, 0.1, 0.1, 1.0);
+        matBall.roughness = 0.1f;
+        
         auto box = New!NewtonBoxShape(Vector3f(1, 1, 1), world);
 
         cubeBodyControllers = New!(NewtonBodyController[])(numCubes);
@@ -89,12 +95,16 @@ class TestScene: Scene
             eCube.controller = cubeBodyControllers[i];
         }
         
-        auto sphere = New!NewtonSphereShape(1.0f, world);
+        auto sphere = New!NewtonSphereShape(0.5f, world);
         auto eCharacter = createEntity3D();
-        eCharacter.drawable = New!ShapeSphere(1.0f, 24, 16, false, assetManager);
-        eCharacter.material = matCube;
+        eCharacter.drawable = New!ShapeSphere(0.5f, 24, 16, false, assetManager);
+        eCharacter.material = matBall;
         eCharacter.position = Vector3f(5, 1, 0);
         auto bCharacter = world.createDynamicBody(sphere, 1.0f);
+        bCharacterController = New!NewtonBodyController(eCharacter, bCharacter);
+        eCharacter.controller = bCharacterController;
+        bCharacter.createUpVectorConstraint();
+        bCharacter.gravity.y = -15;
         
         auto boxFloor = New!NewtonBoxShape(Vector3f(50, 1, 50), world);
         
@@ -135,17 +145,19 @@ class TestScene: Scene
     
     override void onLogicsUpdate(double dt)
     {
-        /*
-        if (eventManager.keyPressed[KEY_UP])
-            foreach(i; 0..cubeBodyControllers.length)
-                cubeBodyControllers[i].rbody.force.y = 20.0f;
-        if (eventManager.keyPressed[KEY_LEFT])
-            foreach(i; 0..cubeBodyControllers.length)
-                cubeBodyControllers[i].rbody.force.x = -20.0f;
-        if (eventManager.keyPressed[KEY_RIGHT])
-            foreach(i; 0..cubeBodyControllers.length)
-                cubeBodyControllers[i].rbody.force.x = 20.0f;
-        */
+        Vector3f targetVelocity = Vector3f(0, 0, 0);
+        if (eventManager.keyPressed[KEY_LEFT]) targetVelocity += Vector3f(5, 0, 0);
+        if (eventManager.keyPressed[KEY_RIGHT]) targetVelocity += Vector3f(-5, 0, 0);
+        if (eventManager.keyPressed[KEY_UP]) targetVelocity += Vector3f(0, 0, 5);
+        if (eventManager.keyPressed[KEY_DOWN]) targetVelocity += Vector3f(0, 0, -5);
+        
+        Vector3f velocityChange = targetVelocity - bCharacterController.rbody.velocity;
+        velocityChange.y = 0;
+
+        //v.y = bCharacterController.rbody.velocity.y;
+        //bCharacterController.rbody.velocity = v;
+        
+        bCharacterController.rbody.velocity = bCharacterController.rbody.velocity + velocityChange;
 
         world.update(dt);
         
