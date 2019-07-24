@@ -8,8 +8,8 @@
     ],
     
     "dependencies": {
-        "bindbc-loader": "~>0.2.1",
-        "dagon": "~dagon-ng"
+        "bindbc-loader": "~>0.1.1",
+        "dagon": "0.10.0"
     },
 
     "importPaths": [

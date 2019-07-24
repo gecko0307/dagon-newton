@@ -3,16 +3,15 @@ module newton;
 import std.stdio;
 import std.string;
 import std.conv;
-import dlib.core.ownership;
 import dlib.core.memory;
 import dlib.math.vector;
 import dlib.math.matrix;
 import dlib.math.transformation;
 import dlib.math.quaternion;
 import dlib.math.utils;
-import dagon.core.event;
-import dagon.core.time;
-import dagon.graphics.entity;
+import dagon.core.ownership;
+import dagon.logics.entity;
+import dagon.logics.controller;
 public import bindbc.newton;
 
 extern(C) nothrow @nogc void newtonBodyForceCallback(const NewtonBody* nbody, dFloat timestep, int threadIndex)
@@ -200,16 +199,20 @@ class NewtonRigidBody: Owner
     }
 }
 
-class NewtonBodyComponent: EntityComponent
+class NewtonBodyController: EntityController
 {
     NewtonRigidBody rbody;
     
-    this(EventManager em, Entity e, NewtonRigidBody b)
+    this(Entity e, NewtonRigidBody b)
     {
-        super(em, e);
+        super(e);
         rbody = b;
         
         Quaternionf rot = e.rotation;
+        if (e.useRotationAngles)
+            rot *= rotationQuaternion!float(Axis.x, degtorad(e.angles.x)) *
+                   rotationQuaternion!float(Axis.y, degtorad(e.angles.y)) * 
+                   rotationQuaternion!float(Axis.z, degtorad(e.angles.z));
         rbody.transformation = 
             translationMatrix(e.position) *
             rot.toMatrix4x4;
@@ -217,9 +220,9 @@ class NewtonBodyComponent: EntityComponent
         NewtonBodySetMatrix(rbody.newtonBody, rbody.transformation.arrayof.ptr);
     }
 
-    override void update(Time t)
+    override void update(double dt)
     {
-        rbody.update(t.delta);
+        rbody.update(dt);
         entity.position = rbody.position.xyz;
         entity.transformation = rbody.transformation * scaleMatrix(entity.scaling);
         entity.invTransformation = entity.transformation.inverse;
