@@ -62,6 +62,10 @@ class TestScene: Scene
         environment.ambientColor = environment.backgroundColor;
         environment.ambientEnergy = 0.5f;
         
+        game.postProcessingRenderer.motionBlurEnabled = true;
+        game.postProcessingRenderer.glowEnabled = true;
+        game.postProcessingRenderer.fxaaEnabled = true;
+        
         sun = addLight(LightType.Sun);
         sun.position.y = 50.0f;
         sun.shadowEnabled = true;
@@ -177,7 +181,7 @@ class NewtonGame: Game
         currentScene = New!TestScene(this);
 
         deferredRenderer.setViewport(0, 0, eventManager.windowWidth, eventManager.windowHeight);
-        postProcRenderer.setViewport(0, 0, eventManager.windowWidth, eventManager.windowHeight);
+        postProcessingRenderer.setViewport(0, 0, eventManager.windowWidth, eventManager.windowHeight);
         presentRenderer.setViewport(0, 0, eventManager.windowWidth, eventManager.windowHeight);
         hudRenderer.setViewport(0, 0, width, height);
     }
@@ -185,7 +189,7 @@ class NewtonGame: Game
     override void onResize(int width, int height)
     {
         deferredRenderer.setViewport(0, 0, width, height);
-        postProcRenderer.setViewport(0, 0, width, height);
+        postProcessingRenderer.setViewport(0, 0, width, height);
         presentRenderer.setViewport(0, 0, width, height);
         hudRenderer.setViewport(0, 0, width, height);
     }
