@@ -203,6 +203,7 @@ class NewtonRigidBody: Owner
 class NewtonBodyComponent: EntityComponent
 {
     NewtonRigidBody rbody;
+    Matrix4x4f prevTransformation;
     
     this(EventManager em, Entity e, NewtonRigidBody b)
     {
@@ -215,14 +216,34 @@ class NewtonBodyComponent: EntityComponent
             rot.toMatrix4x4;
         
         NewtonBodySetMatrix(rbody.newtonBody, rbody.transformation.arrayof.ptr);
+        
+        prevTransformation = Matrix4x4f.identity;
     }
 
     override void update(Time t)
     {
         rbody.update(t.delta);
+        
+        entity.prevTransformation = prevTransformation;
+        
         entity.position = rbody.position.xyz;
         entity.transformation = rbody.transformation * scaleMatrix(entity.scaling);
         entity.invTransformation = entity.transformation.inverse;
         entity.rotation = rbody.rotation;
+        
+        if (entity.parent)
+        {
+            entity.absoluteTransformation = entity.parent.absoluteTransformation * entity.transformation;
+            entity.invAbsoluteTransformation = entity.invTransformation * entity.parent.invAbsoluteTransformation;
+            entity.prevAbsoluteTransformation = entity.parent.prevAbsoluteTransformation * entity.prevTransformation;
+        }
+        else
+        {
+            entity.absoluteTransformation = entity.transformation;
+            entity.invAbsoluteTransformation = entity.invTransformation;
+            entity.prevAbsoluteTransformation = entity.prevTransformation;
+        }
+        
+        prevTransformation = entity.transformation;
     }
 }

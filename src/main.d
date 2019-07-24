@@ -17,6 +17,8 @@ class TestScene: Scene
     FreeviewComponent freeview;
     Light sun;
     Color4f sunColor = Color4f(1.0f, 0.7f, 0.5f, 1.0f);
+    float sunPitch = -45.0f;
+    float sunTurn = 0.0f;
 
     NewtonPhysicsWorld world;
     NewtonBodyComponent[] cubeBodyControllers;
@@ -54,15 +56,18 @@ class TestScene: Scene
         
         camera = addCamera();
         freeview = New!FreeviewComponent(eventManager, camera);
-        freeview.zoom(-100);
+        //freeview.zoom(-100);
         game.renderer.activeCamera = camera;
         
         sun = addLight(LightType.Sun);
         sun.position.y = 50.0f;
         sun.shadowEnabled = true;
-        sun.energy = 10.0f;
+        sun.energy = 20.0f;
         sun.scatteringEnabled = false;
         sun.color = sunColor;
+        sun.rotation =
+            rotationQuaternion!float(Axis.y, degtorad(sunTurn)) *
+            rotationQuaternion!float(Axis.x, degtorad(sunPitch));
         
         auto eSky = addEntity();
         auto psync = New!PositionSync(eventManager, eSky, camera);
