@@ -56,8 +56,11 @@ class TestScene: Scene
         
         camera = addCamera();
         freeview = New!FreeviewComponent(eventManager, camera);
-        //freeview.zoom(-100);
         game.renderer.activeCamera = camera;
+        
+        environment.backgroundColor = Color4f(0.9f, 0.8f, 1.0f, 1.0f);
+        environment.ambientColor = environment.backgroundColor;
+        environment.ambientEnergy = 1.0f;
         
         sun = addLight(LightType.Sun);
         sun.position.y = 50.0f;
@@ -75,9 +78,10 @@ class TestScene: Scene
         eSky.scaling = Vector3f(100.0f, 100.0f, 100.0f);
         eSky.layer = EntityLayer.Background;
         eSky.material = New!Material(assetManager);
-        //eSky.material.shader = New!RayleighShader(assetManager);
         eSky.material.depthWrite = false;
         eSky.material.culling = false;
+        eSky.material.diffuse = environment.backgroundColor;
+        eSky.material.shader = New!SkyShader(assetManager);
         
         auto matCube = New!Material(assetManager);
         matCube.diffuse = Color4f(1.0, 0.5, 0.3, 1.0);
