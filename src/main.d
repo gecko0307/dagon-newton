@@ -60,7 +60,7 @@ class TestScene: Scene
         
         environment.backgroundColor = Color4f(0.9f, 0.8f, 1.0f, 1.0f);
         environment.ambientColor = environment.backgroundColor;
-        environment.ambientEnergy = 1.0f;
+        environment.ambientEnergy = 0.5f;
         
         sun = addLight(LightType.Sun);
         sun.position.y = 50.0f;
