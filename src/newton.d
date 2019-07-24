@@ -17,7 +17,7 @@ public import bindbc.newton;
 
 extern(C) nothrow @nogc void newtonBodyForceCallback(const NewtonBody* nbody, dFloat timestep, int threadIndex)
 {
-	NewtonRigidBody b = cast(NewtonRigidBody)NewtonBodyGetUserData(nbody);
+    NewtonRigidBody b = cast(NewtonRigidBody)NewtonBodyGetUserData(nbody);
     if (b)
     {
         Vector3f gravityForce = b.gravity * b.mass;
