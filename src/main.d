@@ -59,6 +59,7 @@ class TestScene: Scene
         environment.ambientColor = environment.backgroundColor;
         environment.ambientEnergy = 0.5f;
         
+        game.deferredRenderer.ssaoEnabled = true;
         game.postProcessingRenderer.motionBlurEnabled = true;
         game.postProcessingRenderer.glowEnabled = true;
         game.postProcessingRenderer.fxaaEnabled = true;
