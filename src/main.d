@@ -205,4 +205,6 @@ void main(string[] args)
     NewtonGame game = New!NewtonGame(1280, 720, false, "Dagon + Newton Game Dynamics", args);
     game.run();
     Delete(game);
+    
+    writeln("Allocated memory: ", allocatedMemory());
 }
