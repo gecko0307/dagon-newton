@@ -15,7 +15,10 @@ import dagon.core.time;
 import dagon.graphics.entity;
 public import bindbc.newton;
 
-extern(C) nothrow @nogc void newtonBodyForceCallback(const NewtonBody* nbody, dFloat timestep, int threadIndex)
+extern(C) nothrow @nogc void newtonBodyForceCallback(
+    const NewtonBody* nbody, 
+    dFloat timestep, 
+    int threadIndex)
 {
     NewtonRigidBody b = cast(NewtonRigidBody)NewtonBodyGetUserData(nbody);
     if (b)
@@ -27,6 +30,34 @@ extern(C) nothrow @nogc void newtonBodyForceCallback(const NewtonBody* nbody, dF
         b.force = Vector3f(0.0f, 0.0f, 0.0f);
         b.torque = Vector3f(0.0f, 0.0f, 0.0f);
     }
+}
+
+extern(C) dFloat newtonWorldRayFilterCallback(
+    const NewtonBody* nbody, 
+    const NewtonCollision* shapeHit, 
+    const dFloat* hitContact, 
+    const dFloat* hitNormal,
+    dLong collisionID,
+    void* userData,
+    dFloat intersectParam)
+{
+    NewtonPhysicsWorld world = cast(NewtonPhysicsWorld)userData;
+    NewtonRigidBody b = cast(NewtonRigidBody)NewtonBodyGetUserData(nbody);
+    if (b)
+    {
+        Vector3f p = Vector3f(hitContact[0], hitContact[1], hitContact[2]);
+        Vector3f n = Vector3f(hitNormal[0], hitNormal[1], hitNormal[2]);
+        b.onRayHit(p, n);
+    }
+    return 0.0f;
+}
+
+extern(C) uint newtonWorldRayPrefilterCallback(
+    const NewtonBody* nbody, 
+    const NewtonCollision* collision, 
+    void* userData)
+{
+    return 1;
 }
 
 class NewtonPhysicsWorld: Owner
@@ -61,6 +92,11 @@ class NewtonPhysicsWorld: Owner
     NewtonRigidBody createStaticBody(NewtonCollisionShape shape)
     {
         return createDynamicBody(shape, 0.0f);
+    }
+    
+    void raycast(Vector3f pstart, Vector3f pend)
+    {
+        NewtonWorldRayCast(newtonWorld, pstart.arrayof.ptr, pend.arrayof.ptr, &newtonWorldRayFilterCallback, cast(void*)this, &newtonWorldRayPrefilterCallback, 0);
     }
     
     ~this()
@@ -197,6 +233,11 @@ class NewtonRigidBody: Owner
         Vector3f v;
         NewtonBodyGetVelocity(newtonBody, v.arrayof.ptr);
         return v;
+    }
+    
+    void onRayHit(Vector3f hitPoint, Vector3f hitNormal)
+    {
+        writeln(hitPoint);
     }
 }
 

@@ -164,6 +164,9 @@ class TestScene: Scene
 
         world.update(t.delta);
         
+        if (eventManager.keyPressed[KEY_SPACE])
+            world.raycast(Vector3f(0, 5, 0), Vector3f(0, -5, 0));
+        
         uint n = sprintf(txt.ptr, "FPS: %u", eventManager.fps);
         string s = cast(string)txt[0..n];
         text.setText(s);
