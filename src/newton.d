@@ -41,13 +41,13 @@ extern(C) dFloat newtonWorldRayFilterCallback(
     void* userData,
     dFloat intersectParam)
 {
-    NewtonPhysicsWorld world = cast(NewtonPhysicsWorld)userData;
+    NewtonRaycaster raycaster = cast(NewtonRaycaster)userData;
     NewtonRigidBody b = cast(NewtonRigidBody)NewtonBodyGetUserData(nbody);
-    if (b)
+    if (raycaster)
     {
         Vector3f p = Vector3f(hitContact[0], hitContact[1], hitContact[2]);
         Vector3f n = Vector3f(hitNormal[0], hitNormal[1], hitNormal[2]);
-        b.onRayHit(p, n);
+        raycaster.onRayHit(b, p, n);
     }
     return 0.0f;
 }
@@ -58,6 +58,11 @@ extern(C) uint newtonWorldRayPrefilterCallback(
     void* userData)
 {
     return 1;
+}
+
+interface NewtonRaycaster
+{
+    void onRayHit(NewtonRigidBody nbody, Vector3f hitPoint, Vector3f hitNormal);
 }
 
 class NewtonPhysicsWorld: Owner
@@ -94,9 +99,9 @@ class NewtonPhysicsWorld: Owner
         return createDynamicBody(shape, 0.0f);
     }
     
-    void raycast(Vector3f pstart, Vector3f pend)
+    void raycast(Vector3f pstart, Vector3f pend, NewtonRaycaster raycaster)
     {
-        NewtonWorldRayCast(newtonWorld, pstart.arrayof.ptr, pend.arrayof.ptr, &newtonWorldRayFilterCallback, cast(void*)this, &newtonWorldRayPrefilterCallback, 0);
+        NewtonWorldRayCast(newtonWorld, pstart.arrayof.ptr, pend.arrayof.ptr, &newtonWorldRayFilterCallback, cast(void*)raycaster, &newtonWorldRayPrefilterCallback, 0);
     }
     
     ~this()
@@ -233,11 +238,6 @@ class NewtonRigidBody: Owner
         Vector3f v;
         NewtonBodyGetVelocity(newtonBody, v.arrayof.ptr);
         return v;
-    }
-    
-    void onRayHit(Vector3f hitPoint, Vector3f hitNormal)
-    {
-        writeln(hitPoint);
     }
 }
 

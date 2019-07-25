@@ -4,7 +4,7 @@ import std.conv;
 import dagon;
 import newton;
 
-class TestScene: Scene
+class TestScene: Scene, NewtonRaycaster
 {
     Game game;
     FontAsset aFontDroidSans14;
@@ -165,15 +165,20 @@ class TestScene: Scene
         world.update(t.delta);
         
         if (eventManager.keyPressed[KEY_SPACE])
-            world.raycast(Vector3f(0, 5, 0), Vector3f(0, -5, 0));
+            world.raycast(Vector3f(0, 5, 0), Vector3f(0, -5, 0), this);
         
         uint n = sprintf(txt.ptr, "FPS: %u", eventManager.fps);
         string s = cast(string)txt[0..n];
         text.setText(s);
     }
+    
+    void onRayHit(NewtonRigidBody nbody, Vector3f hitPoint, Vector3f hitNormal)
+    {
+        writeln(hitPoint);
+    }
 }
 
-class NewtonGame: Game
+class TestGame: Game
 {
     this(uint w, uint h, bool fullscreen, string title, string[] args)
     {
@@ -206,7 +211,7 @@ void main(string[] args)
         writeln(info.error.to!string, " ", info.message.to!string);
     }
     
-    NewtonGame game = New!NewtonGame(1280, 720, false, "Dagon + Newton Game Dynamics", args);
+    TestGame game = New!TestGame(1280, 720, false, "Dagon + Newton Game Dynamics", args);
     game.run();
     Delete(game);
     
