@@ -49,10 +49,7 @@ class TestScene: Scene
     {
         world = New!NewtonPhysicsWorld(assetManager);
         
-        version(X86)
-            world.loadPlugins("plugins/x86");
-        else
-            world.loadPlugins("plugins/x64");
+        world.loadPlugins("./");
         
         camera = addCamera();
         freeview = New!FreeviewComponent(eventManager, camera);

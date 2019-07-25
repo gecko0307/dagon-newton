@@ -8,8 +8,8 @@
     ],
     
     "dependencies": {
-        "bindbc-loader": "~>0.2.1",
-        "dagon": "~dagon-ng"
+        "dagon": "~dagon-ng",
+        "bindbc-newton": "~>0.1.0"
     },
 
     "importPaths": [
@@ -28,9 +28,6 @@
             "name": "application",
             "targetType": "executable"
         }
-    ],
-    
-    "copyFiles-windows-x86" : ["lib/x86/*.dll"],
-    "copyFiles-windows-x86_64" : ["lib/x64/*.dll"]
+    ]
 }
 
