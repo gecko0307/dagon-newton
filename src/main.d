@@ -1,5 +1,6 @@
 import std.stdio;
 import std.conv;
+import std.math;
 
 import dagon;
 import newton;
@@ -10,9 +11,9 @@ class TestScene: Scene, NewtonRaycaster
     FontAsset aFontDroidSans14;
     OBJAsset aCubeMesh;
     TextureAsset aGridTexture;
-    
+
     TextLine text;
-    
+
     Camera camera;
     FreeviewComponent freeview;
     Light sun;
@@ -23,15 +24,17 @@ class TestScene: Scene, NewtonRaycaster
     NewtonPhysicsWorld world;
     NewtonBodyComponent[] cubeBodyControllers;
     size_t numCubes = 100;
-    
+
+    Entity eCharacter;
     NewtonBodyComponent bCharacterController;
+    float groundHeight = -5.0f;
 
     this(Game game)
     {
         super(game);
         this.game = game;
     }
-    
+
     ~this()
     {
         if (cubeBodyControllers.length)
@@ -48,22 +51,22 @@ class TestScene: Scene, NewtonRaycaster
     override void afterLoad()
     {
         world = New!NewtonPhysicsWorld(assetManager);
-        
+
         world.loadPlugins("./");
-        
+
         camera = addCamera();
         freeview = New!FreeviewComponent(eventManager, camera);
         game.renderer.activeCamera = camera;
-        
+
         environment.backgroundColor = Color4f(0.9f, 0.8f, 1.0f, 1.0f);
         environment.ambientColor = environment.backgroundColor;
         environment.ambientEnergy = 0.5f;
-        
+
         game.deferredRenderer.ssaoEnabled = true;
         game.postProcessingRenderer.motionBlurEnabled = true;
         game.postProcessingRenderer.glowEnabled = true;
         game.postProcessingRenderer.fxaaEnabled = true;
-        
+
         sun = addLight(LightType.Sun);
         sun.position.y = 50.0f;
         sun.shadowEnabled = true;
@@ -73,7 +76,7 @@ class TestScene: Scene, NewtonRaycaster
         sun.rotation =
             rotationQuaternion!float(Axis.y, degtorad(sunTurn)) *
             rotationQuaternion!float(Axis.x, degtorad(sunPitch));
-        
+
         auto eSky = addEntity();
         auto psync = New!PositionSync(eventManager, eSky, camera);
         eSky.drawable = New!ShapeBox(Vector3f(1.0f, 1.0f, 1.0f), assetManager);
@@ -84,15 +87,15 @@ class TestScene: Scene, NewtonRaycaster
         eSky.material.culling = false;
         eSky.material.diffuse = environment.backgroundColor;
         eSky.material.shader = New!SkyShader(assetManager);
-        
+
         auto matCube = New!Material(assetManager);
         matCube.diffuse = Color4f(1.0, 0.5, 0.3, 1.0);
         matCube.roughness = 0.4f;
-        
+
         auto matBall = New!Material(assetManager);
         matBall.diffuse = Color4f(0.7, 0.1, 0.1, 1.0);
         matBall.roughness = 0.1f;
-        
+
         auto box = New!NewtonBoxShape(Vector3f(1, 1, 1), world);
 
         cubeBodyControllers = New!(NewtonBodyComponent[])(numCubes);
@@ -105,24 +108,25 @@ class TestScene: Scene, NewtonRaycaster
             auto b = world.createDynamicBody(box, 1.0f);
             cubeBodyControllers[i] = New!NewtonBodyComponent(eventManager, eCube, b);
         }
-        
+
         auto sphere = New!NewtonSphereShape(0.5f, world);
-        auto eCharacter = addEntity();
+        eCharacter = addEntity();
         eCharacter.drawable = New!ShapeSphere(0.5f, 24, 16, false, assetManager);
         eCharacter.material = matBall;
         eCharacter.position = Vector3f(5, 1, 0);
-        auto bCharacter = world.createDynamicBody(sphere, 1.0f);
+        auto bCharacter = world.createDynamicBody(sphere, 80.0f);
+        bCharacter.raycastable = false;
         bCharacterController = New!NewtonBodyComponent(eventManager, eCharacter, bCharacter);
         bCharacter.createUpVectorConstraint();
-        bCharacter.gravity.y = -15;
-        
+        //bCharacter.gravity.y = -15;
+
         auto boxFloor = New!NewtonBoxShape(Vector3f(50, 1, 50), world);
-        
+
         auto eFloor = addEntity();
         eFloor.position = Vector3f(0, -0.5, 0);
         auto b = world.createStaticBody(boxFloor);
         auto planeBodyController = New!NewtonBodyComponent(eventManager, eFloor, b);
-        
+
         auto matPlane = New!Material(assetManager);
         matPlane.diffuse = aGridTexture.texture;
         matPlane.textureScale = Vector2f(5, 5);
@@ -130,51 +134,63 @@ class TestScene: Scene, NewtonRaycaster
         auto ePlane = addEntity();
         ePlane.drawable = New!ShapePlane(50, 50, 10, assetManager);
         ePlane.material = matPlane;
-        
+
         text = New!TextLine(aFontDroidSans14.font, "0", assetManager);
         text.color = Color4f(1.0f, 1.0f, 1.0f, 0.7f);
         auto eText = addEntityHUD();
         eText.drawable = text;
         eText.position = Vector3f(16.0f, 30.0f, 0.0f);
     }
-    
+
     override void onKeyDown(int key)
     {
         if (key == KEY_ESCAPE)
             application.exit();
     }
-    
+
     char[100] txt;
-    
+
     override void onUpdate(Time t)
     {
+        Vector3f rayStart = eCharacter.position;
+        Vector3f rayEnd = eCharacter.position;
+        rayEnd.y = -5.0f;
+        groundHeight = -5.0f;
+        world.raycast(rayStart, rayEnd, this);
+
         Vector3f targetVelocity = Vector3f(0, 0, 0);
         if (eventManager.keyPressed[KEY_LEFT]) targetVelocity += Vector3f(5, 0, 0);
         if (eventManager.keyPressed[KEY_RIGHT]) targetVelocity += Vector3f(-5, 0, 0);
         if (eventManager.keyPressed[KEY_UP]) targetVelocity += Vector3f(0, 0, 5);
         if (eventManager.keyPressed[KEY_DOWN]) targetVelocity += Vector3f(0, 0, -5);
-        
-        Vector3f velocityChange = targetVelocity - bCharacterController.rbody.velocity;
-        velocityChange.y = 0;
+        if (eventManager.keyPressed[KEY_SPACE]) jump(5.0f);
 
-        //v.y = bCharacterController.rbody.velocity.y;
-        //bCharacterController.rbody.velocity = v;
-        
+        Vector3f velocityChange = targetVelocity - bCharacterController.rbody.velocity;
+        velocityChange.y = 0.0f;
         bCharacterController.rbody.velocity = bCharacterController.rbody.velocity + velocityChange;
 
         world.update(t.delta);
-        
-        if (eventManager.keyPressed[KEY_SPACE])
-            world.raycast(Vector3f(0, 5, 0), Vector3f(0, -5, 0), this);
-        
+
         uint n = sprintf(txt.ptr, "FPS: %u", eventManager.fps);
         string s = cast(string)txt[0..n];
         text.setText(s);
     }
-    
+
     void onRayHit(NewtonRigidBody nbody, Vector3f hitPoint, Vector3f hitNormal)
     {
-        writeln(hitPoint);
+        if (hitPoint.y > groundHeight)
+            groundHeight = hitPoint.y;
+    }
+
+    void jump(float height)
+    {
+        if (abs(eCharacter.position.y - groundHeight) <= (0.5f + 0.001f))
+        {
+            float jumpSpeed = sqrt(2.0f * height);
+            Vector3f v = bCharacterController.rbody.velocity;
+            v.y = jumpSpeed;
+            bCharacterController.rbody.velocity = v;
+        }
     }
 }
 
@@ -210,10 +226,10 @@ void main(string[] args)
     {
         writeln(info.error.to!string, " ", info.message.to!string);
     }
-    
-    TestGame game = New!TestGame(1280, 720, false, "Dagon + Newton Game Dynamics", args);
+
+    TestGame game = New!TestGame(640, 480, false, "Dagon + Newton Game Dynamics", args);
     game.run();
     Delete(game);
-    
+
     writeln("Allocated memory: ", allocatedMemory());
 }

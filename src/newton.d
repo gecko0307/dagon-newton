@@ -16,8 +16,8 @@ import dagon.graphics.entity;
 public import bindbc.newton;
 
 extern(C) nothrow @nogc void newtonBodyForceCallback(
-    const NewtonBody* nbody, 
-    dFloat timestep, 
+    const NewtonBody* nbody,
+    dFloat timestep,
     int threadIndex)
 {
     NewtonRigidBody b = cast(NewtonRigidBody)NewtonBodyGetUserData(nbody);
@@ -32,10 +32,10 @@ extern(C) nothrow @nogc void newtonBodyForceCallback(
     }
 }
 
-extern(C) dFloat newtonWorldRayFilterCallback(
-    const NewtonBody* nbody, 
-    const NewtonCollision* shapeHit, 
-    const dFloat* hitContact, 
+extern(C) nothrow @nogc dFloat newtonWorldRayFilterCallback(
+    const NewtonBody* nbody,
+    const NewtonCollision* shapeHit,
+    const dFloat* hitContact,
     const dFloat* hitNormal,
     dLong collisionID,
     void* userData,
@@ -43,18 +43,21 @@ extern(C) dFloat newtonWorldRayFilterCallback(
 {
     NewtonRaycaster raycaster = cast(NewtonRaycaster)userData;
     NewtonRigidBody b = cast(NewtonRigidBody)NewtonBodyGetUserData(nbody);
-    if (raycaster)
+    if (raycaster && b)
     {
-        Vector3f p = Vector3f(hitContact[0], hitContact[1], hitContact[2]);
-        Vector3f n = Vector3f(hitNormal[0], hitNormal[1], hitNormal[2]);
-        raycaster.onRayHit(b, p, n);
+        //if (b.raycastable)
+        {
+            Vector3f p = Vector3f(hitContact[0], hitContact[1], hitContact[2]);
+            Vector3f n = Vector3f(hitNormal[0], hitNormal[1], hitNormal[2]);
+            raycaster.onRayHit(b, p, n);
+        }
     }
     return 0.0f;
 }
 
 extern(C) uint newtonWorldRayPrefilterCallback(
-    const NewtonBody* nbody, 
-    const NewtonCollision* collision, 
+    const NewtonBody* nbody,
+    const NewtonCollision* collision,
     void* userData)
 {
     return 1;
@@ -62,48 +65,48 @@ extern(C) uint newtonWorldRayPrefilterCallback(
 
 interface NewtonRaycaster
 {
-    void onRayHit(NewtonRigidBody nbody, Vector3f hitPoint, Vector3f hitNormal);
+    nothrow @nogc void onRayHit(NewtonRigidBody nbody, Vector3f hitPoint, Vector3f hitNormal);
 }
 
 class NewtonPhysicsWorld: Owner
 {
     NewtonWorld* newtonWorld;
-    
+
     this(Owner o)
     {
         super(o);
         newtonWorld = NewtonCreate();
     }
-    
+
     void loadPlugins(string dir)
     {
         NewtonLoadPlugins(newtonWorld, dir.toStringz);
         void* p = NewtonGetPreferedPlugin(newtonWorld);
         writeln("Selected plugin: ", NewtonGetPluginString(newtonWorld, p).to!string);
     }
-    
+
     void update(double dt)
     {
         NewtonUpdate(newtonWorld, dt);
     }
-    
+
     NewtonRigidBody createDynamicBody(NewtonCollisionShape shape, float mass)
     {
         NewtonRigidBody b = New!NewtonRigidBody(shape, mass, this, this);
         // TODO: store a list of bodies
         return b;
     }
-    
+
     NewtonRigidBody createStaticBody(NewtonCollisionShape shape)
     {
         return createDynamicBody(shape, 0.0f);
     }
-    
+
     void raycast(Vector3f pstart, Vector3f pend, NewtonRaycaster raycaster)
     {
         NewtonWorldRayCast(newtonWorld, pstart.arrayof.ptr, pend.arrayof.ptr, &newtonWorldRayFilterCallback, cast(void*)raycaster, &newtonWorldRayPrefilterCallback, 0);
     }
-    
+
     ~this()
     {
         NewtonMaterialDestroyAllGroupID(newtonWorld);
@@ -116,19 +119,19 @@ abstract class NewtonCollisionShape: Owner
 {
     NewtonPhysicsWorld world;
     NewtonCollision* newtonCollision;
-    
+
     this(NewtonPhysicsWorld world)
     {
         super(world);
         this.world = world;
     }
-    
+
     ~this()
     {
         if (newtonCollision)
             NewtonDestroyCollision(newtonCollision);
     }
-    
+
     // Override me
     Vector3f inertia(float mass)
     {
@@ -139,14 +142,14 @@ abstract class NewtonCollisionShape: Owner
 class NewtonBoxShape: NewtonCollisionShape
 {
     Vector3f halfSize;
-    
+
     this(Vector3f extents, NewtonPhysicsWorld world)
     {
         super(world);
         newtonCollision = NewtonCreateBox(world.newtonWorld, extents.x, extents.y, extents.z, 0, null);
         halfSize = extents * 0.5f;
     }
-    
+
     override Vector3f inertia(float mass)
     {
         float x2 = halfSize.x * halfSize.x;
@@ -163,14 +166,14 @@ class NewtonBoxShape: NewtonCollisionShape
 class NewtonSphereShape: NewtonCollisionShape
 {
     float radius;
-    
+
     this(float radius, NewtonPhysicsWorld world)
     {
         super(world);
         this.radius = radius;
         newtonCollision = NewtonCreateSphere(world.newtonWorld, radius, 0, null);
     }
-    
+
     override Vector3f inertia(float mass)
     {
         float v = 0.4f * mass * radius * radius;
@@ -190,11 +193,14 @@ class NewtonRigidBody: Owner
     Vector4f position = Vector4f(0.0f, 0.0f, 0.0f, 1.0f);
     Quaternionf rotation = Quaternionf.identity;
     Matrix4x4f transformation = Matrix4x4f.identity;
+    bool raycastable = true;
+
+    bool isRaycastable() { return raycastable; }
 
     this(NewtonCollisionShape shape, float mass, NewtonPhysicsWorld world, Owner o)
     {
         super(o);
-        
+
         this.world = world;
 
         newtonBody = NewtonCreateDynamicBody(world.newtonWorld, shape.newtonCollision, transformation.arrayof.ptr);
@@ -204,35 +210,35 @@ class NewtonRigidBody: Owner
         NewtonBodySetMassMatrix(newtonBody, mass, inertia.x, inertia.y, inertia.z);
         NewtonBodySetForceAndTorqueCallback(newtonBody, &newtonBodyForceCallback);
     }
-    
+
     void update(double dt)
     {
-        NewtonBodyGetPosition(newtonBody, position.arrayof.ptr);        
-        NewtonBodyGetMatrix(newtonBody, transformation.arrayof.ptr);        
+        NewtonBodyGetPosition(newtonBody, position.arrayof.ptr);
+        NewtonBodyGetMatrix(newtonBody, transformation.arrayof.ptr);
         rotation = Quaternionf.fromMatrix(transformation);
     }
-    
+
     void addForce(Vector3f f)
     {
         force += f;
     }
-    
+
     void addTorque(Vector3f t)
     {
         torque += t;
     }
-    
+
     void createUpVectorConstraint()
     {
         Vector3f up = Vector3f(0.0f, 1.0f, 0.0f);
         NewtonJoint* joint = NewtonConstraintCreateUpVector(world.newtonWorld, up.arrayof.ptr, newtonBody);
     }
-    
+
     void velocity(Vector3f v) @property
     {
         NewtonBodySetVelocity(newtonBody, v.arrayof.ptr);
     }
-    
+
     Vector3f velocity() @property
     {
         Vector3f v;
@@ -245,37 +251,37 @@ class NewtonBodyComponent: EntityComponent
 {
     NewtonRigidBody rbody;
     Matrix4x4f prevTransformation;
-    
+
     this(EventManager em, Entity e, NewtonRigidBody b)
     {
         super(em, e);
         rbody = b;
-        
+
         Quaternionf rot = e.rotation;
-        rbody.transformation = 
+        rbody.transformation =
             translationMatrix(e.position) *
             rot.toMatrix4x4;
-        
+
         NewtonBodySetMatrix(rbody.newtonBody, rbody.transformation.arrayof.ptr);
-        
+
         prevTransformation = Matrix4x4f.identity;
     }
 
     override void update(Time t)
     {
         rbody.update(t.delta);
-        
+
         entity.prevTransformation = prevTransformation;
-        
+
         entity.position = rbody.position.xyz;
         entity.transformation = rbody.transformation * scaleMatrix(entity.scaling);
         entity.invTransformation = entity.transformation.inverse;
         entity.rotation = rbody.rotation;
-        
+
         entity.absoluteTransformation = entity.transformation;
         entity.invAbsoluteTransformation = entity.invTransformation;
         entity.prevAbsoluteTransformation = entity.prevTransformation;
-        
+
         prevTransformation = entity.transformation;
     }
 }
