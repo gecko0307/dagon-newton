@@ -105,7 +105,7 @@ class TestScene: Scene, NewtonRaycaster
             eCube.drawable = aCubeMesh.mesh;
             eCube.material = matCube;
             eCube.position = Vector3f(0, i * 1.5, 0);
-            auto b = world.createDynamicBody(box, 1.0f);
+            auto b = world.createDynamicBody(box, 80.0f);
             cubeBodyControllers[i] = New!NewtonBodyComponent(eventManager, eCube, b);
         }
 
@@ -118,7 +118,6 @@ class TestScene: Scene, NewtonRaycaster
         bCharacter.raycastable = false;
         bCharacterController = New!NewtonBodyComponent(eventManager, eCharacter, bCharacter);
         bCharacter.createUpVectorConstraint();
-        //bCharacter.gravity.y = -15;
 
         auto boxFloor = New!NewtonBoxShape(Vector3f(50, 1, 50), world);
 
@@ -159,17 +158,20 @@ class TestScene: Scene, NewtonRaycaster
         world.raycast(rayStart, rayEnd, this);
 
         Vector3f targetVelocity = Vector3f(0, 0, 0);
-        if (eventManager.keyPressed[KEY_LEFT]) targetVelocity += Vector3f(5, 0, 0);
-        if (eventManager.keyPressed[KEY_RIGHT]) targetVelocity += Vector3f(-5, 0, 0);
-        if (eventManager.keyPressed[KEY_UP]) targetVelocity += Vector3f(0, 0, 5);
-        if (eventManager.keyPressed[KEY_DOWN]) targetVelocity += Vector3f(0, 0, -5);
-        if (eventManager.keyPressed[KEY_SPACE]) jump(5.0f);
+        float speed = 6.0f;
+        if (eventManager.keyPressed[KEY_LEFT]) targetVelocity += camera.right * -speed;
+        if (eventManager.keyPressed[KEY_RIGHT]) targetVelocity += camera.right * speed;
+        if (eventManager.keyPressed[KEY_UP]) targetVelocity += camera.direction * -speed;
+        if (eventManager.keyPressed[KEY_DOWN]) targetVelocity += camera.direction * speed;
+        if (eventManager.keyPressed[KEY_SPACE]) jump(15.0f);
 
         Vector3f velocityChange = targetVelocity - bCharacterController.rbody.velocity;
         velocityChange.y = 0.0f;
         bCharacterController.rbody.velocity = bCharacterController.rbody.velocity + velocityChange;
 
         world.update(t.delta);
+
+        freeview.setTargetSmooth(eCharacter.position, 0.8f);
 
         uint n = sprintf(txt.ptr, "FPS: %u", eventManager.fps);
         string s = cast(string)txt[0..n];
@@ -178,7 +180,7 @@ class TestScene: Scene, NewtonRaycaster
 
     void onRayHit(NewtonRigidBody nbody, Vector3f hitPoint, Vector3f hitNormal)
     {
-        if (hitPoint.y > groundHeight)
+        if (nbody.raycastable && hitPoint.y > groundHeight)
             groundHeight = hitPoint.y;
     }
 
@@ -227,7 +229,7 @@ void main(string[] args)
         writeln(info.error.to!string, " ", info.message.to!string);
     }
 
-    TestGame game = New!TestGame(640, 480, false, "Dagon + Newton Game Dynamics", args);
+    TestGame game = New!TestGame(1280, 720, false, "Dagon + Newton Game Dynamics", args);
     game.run();
     Delete(game);
 

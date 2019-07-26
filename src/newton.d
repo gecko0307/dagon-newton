@@ -32,7 +32,7 @@ extern(C) nothrow @nogc void newtonBodyForceCallback(
     }
 }
 
-extern(C) nothrow @nogc dFloat newtonWorldRayFilterCallback(
+extern(C) dFloat newtonWorldRayFilterCallback(
     const NewtonBody* nbody,
     const NewtonCollision* shapeHit,
     const dFloat* hitContact,
@@ -45,14 +45,11 @@ extern(C) nothrow @nogc dFloat newtonWorldRayFilterCallback(
     NewtonRigidBody b = cast(NewtonRigidBody)NewtonBodyGetUserData(nbody);
     if (raycaster && b)
     {
-        //if (b.raycastable)
-        {
-            Vector3f p = Vector3f(hitContact[0], hitContact[1], hitContact[2]);
-            Vector3f n = Vector3f(hitNormal[0], hitNormal[1], hitNormal[2]);
-            raycaster.onRayHit(b, p, n);
-        }
+        Vector3f p = Vector3f(hitContact[0], hitContact[1], hitContact[2]);
+        Vector3f n = Vector3f(hitNormal[0], hitNormal[1], hitNormal[2]);
+        raycaster.onRayHit(b, p, n);
     }
-    return 0.0f;
+    return 1.0f;
 }
 
 extern(C) uint newtonWorldRayPrefilterCallback(
@@ -65,7 +62,7 @@ extern(C) uint newtonWorldRayPrefilterCallback(
 
 interface NewtonRaycaster
 {
-    nothrow @nogc void onRayHit(NewtonRigidBody nbody, Vector3f hitPoint, Vector3f hitNormal);
+    void onRayHit(NewtonRigidBody nbody, Vector3f hitPoint, Vector3f hitNormal);
 }
 
 class NewtonPhysicsWorld: Owner
