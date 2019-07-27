@@ -1,7 +1,7 @@
 {
     "name": "main",
-    "description": "",
-    "homepage": "",
+    "description": "Newton integration for Dagon",
+    "homepage": "https://github.com/gecko0307/dagon-newton",
     "license": "Boost",
     "authors": [
         "Timur Gafarov"
