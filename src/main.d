@@ -3,6 +3,7 @@ import std.conv;
 import std.math;
 
 import dagon;
+import dagon.ext.ftfont;
 import newton;
 
 class TestScene: Scene, NewtonRaycaster
@@ -43,7 +44,7 @@ class TestScene: Scene, NewtonRaycaster
 
     override void beforeLoad()
     {
-        aFontDroidSans14 = addFontAsset("data/font/DroidSans.ttf", 14);
+        aFontDroidSans14 = this.addFontAsset("data/font/DroidSans.ttf", 14);
         aCubeMesh = addOBJAsset("data/cube.obj");
         aGridTexture = addTextureAsset("data/grid.png");
     }

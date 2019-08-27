@@ -8,7 +8,8 @@
     ],
     
     "dependencies": {
-        "dagon": "~dagon-ng",
+        "dagon": "~master",
+        "dagon:ftfont": "~master",
         "bindbc-newton": "~>0.1.0"
     },
 
