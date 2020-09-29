@@ -174,7 +174,7 @@ class TestScene: Scene, NewtonRaycaster
 
         freeview.setTargetSmooth(eCharacter.position, 1.0f);
 
-        uint n = sprintf(txt.ptr, "FPS: %u", eventManager.fps);
+        uint n = sprintf(txt.ptr, "FPS: %u", cast(int)(1.0 / eventManager.deltaTime));
         string s = cast(string)txt[0..n];
         text.setText(s);
     }
