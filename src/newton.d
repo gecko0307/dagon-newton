@@ -190,6 +190,7 @@ class NewtonRigidBody: Owner
     Vector4f position = Vector4f(0.0f, 0.0f, 0.0f, 1.0f);
     Quaternionf rotation = Quaternionf.identity;
     Matrix4x4f transformation = Matrix4x4f.identity;
+    bool enableRotation = true;
     bool raycastable = true;
 
     bool isRaycastable() { return raycastable; }
@@ -212,7 +213,16 @@ class NewtonRigidBody: Owner
     {
         NewtonBodyGetPosition(newtonBody, position.arrayof.ptr);
         NewtonBodyGetMatrix(newtonBody, transformation.arrayof.ptr);
-        rotation = Quaternionf.fromMatrix(transformation);
+        if (enableRotation)
+        {
+            rotation = Quaternionf.fromMatrix(transformation);
+        }
+        else
+        {
+            rotation = Quaternionf.identity;
+            transformation = translationMatrix(position.xyz);
+            NewtonBodySetMatrix(newtonBody, transformation.arrayof.ptr);
+        }
     }
 
     void addForce(Vector3f f)

@@ -117,6 +117,7 @@ class TestScene: Scene, NewtonRaycaster
         eCharacter.position = Vector3f(5, 1, 0);
         auto bCharacter = world.createDynamicBody(sphere, 80.0f);
         bCharacter.raycastable = false;
+        bCharacter.enableRotation = false;
         bCharacterController = New!NewtonBodyComponent(eventManager, eCharacter, bCharacter);
         bCharacter.createUpVectorConstraint();
 
