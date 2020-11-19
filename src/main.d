@@ -4,7 +4,7 @@ import std.math;
 
 import dagon;
 import dagon.ext.ftfont;
-import newton;
+import dagon.ext.newton;
 
 class TestScene: Scene, NewtonRaycaster
 {
