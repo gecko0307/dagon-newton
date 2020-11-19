@@ -116,10 +116,11 @@ class TestScene: Scene, NewtonRaycaster
         eCharacter.material = matBall;
         eCharacter.position = Vector3f(5, 1, 0);
         auto bCharacter = world.createDynamicBody(sphere, 80.0f);
+        bCharacter.groupId = world.kinematicGroupId;
         bCharacter.raycastable = false;
         bCharacter.enableRotation = false;
         bCharacterController = New!NewtonBodyComponent(eventManager, eCharacter, bCharacter);
-        bCharacter.createUpVectorConstraint();
+        bCharacter.createUpVectorConstraint(Vector3f(0.0f, 1.0f, 0.0f));
 
         auto boxFloor = New!NewtonBoxShape(Vector3f(50, 1, 50), world);
 

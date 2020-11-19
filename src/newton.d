@@ -68,11 +68,21 @@ interface NewtonRaycaster
 class NewtonPhysicsWorld: Owner
 {
     NewtonWorld* newtonWorld;
+    int defaultGroupId;
+    int kinematicGroupId;
 
     this(Owner o)
     {
         super(o);
         newtonWorld = NewtonCreate();
+        defaultGroupId = NewtonMaterialGetDefaultGroupID(newtonWorld);
+        kinematicGroupId = createGroupId();
+        NewtonMaterialSetDefaultElasticity(newtonWorld, defaultGroupId, kinematicGroupId, 0.0f);
+    }
+    
+    int createGroupId()
+    {
+        return NewtonMaterialCreateGroupID(newtonWorld);
     }
 
     void loadPlugins(string dir)
@@ -182,6 +192,7 @@ class NewtonRigidBody: Owner
 {
     NewtonPhysicsWorld world;
     NewtonBody* newtonBody;
+    int materialGroupId;
     float mass;
     Vector3f inertia;
     Vector3f gravity = Vector3f(0.0f, -9.8f, 0.0f);
@@ -203,6 +214,7 @@ class NewtonRigidBody: Owner
 
         newtonBody = NewtonCreateDynamicBody(world.newtonWorld, shape.newtonCollision, transformation.arrayof.ptr);
         NewtonBodySetUserData(newtonBody, cast(void*)this);
+        this.groupId = world.defaultGroupId;
         this.mass = mass;
         this.inertia = shape.inertia(mass);
         NewtonBodySetMassMatrix(newtonBody, mass, inertia.x, inertia.y, inertia.z);
@@ -224,6 +236,17 @@ class NewtonRigidBody: Owner
             NewtonBodySetMatrix(newtonBody, transformation.arrayof.ptr);
         }
     }
+    
+    void groupId(int id) @property
+    {
+        NewtonBodySetMaterialGroupID(newtonBody, id);
+        materialGroupId = id;
+    }
+    
+    int groupId() @property
+    {
+        return materialGroupId;
+    }
 
     void addForce(Vector3f f)
     {
@@ -235,9 +258,8 @@ class NewtonRigidBody: Owner
         torque += t;
     }
 
-    void createUpVectorConstraint()
+    void createUpVectorConstraint(Vector3f up)
     {
-        Vector3f up = Vector3f(0.0f, 1.0f, 0.0f);
         NewtonJoint* joint = NewtonConstraintCreateUpVector(world.newtonWorld, up.arrayof.ptr, newtonBody);
     }
 
