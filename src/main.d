@@ -64,7 +64,6 @@ class TestScene: Scene, NewtonRaycaster
         environment.ambientEnergy = 0.5f;
 
         game.deferredRenderer.ssaoEnabled = true;
-        game.postProcessingRenderer.motionBlurEnabled = true;
         game.postProcessingRenderer.glowEnabled = true;
         game.postProcessingRenderer.fxaaEnabled = true;
 
@@ -95,7 +94,7 @@ class TestScene: Scene, NewtonRaycaster
 
         auto matBall = New!Material(assetManager);
         matBall.diffuse = Color4f(0.7, 0.1, 0.1, 1.0);
-        matBall.roughness = 0.1f;
+        matBall.roughness = 0.3f;
 
         auto box = New!NewtonBoxShape(Vector3f(1, 1, 1), world);
 
@@ -162,10 +161,10 @@ class TestScene: Scene, NewtonRaycaster
 
         Vector3f targetVelocity = Vector3f(0, 0, 0);
         float speed = 6.0f;
-        if (eventManager.keyPressed[KEY_LEFT]) targetVelocity += camera.right * -speed;
-        if (eventManager.keyPressed[KEY_RIGHT]) targetVelocity += camera.right * speed;
-        if (eventManager.keyPressed[KEY_UP]) targetVelocity += camera.direction * -speed;
-        if (eventManager.keyPressed[KEY_DOWN]) targetVelocity += camera.direction * speed;
+        if (eventManager.keyPressed[KEY_A]) targetVelocity += camera.right * -speed;
+        if (eventManager.keyPressed[KEY_D]) targetVelocity += camera.right * speed;
+        if (eventManager.keyPressed[KEY_W]) targetVelocity += camera.direction * -speed;
+        if (eventManager.keyPressed[KEY_S]) targetVelocity += camera.direction * speed;
         if (eventManager.keyPressed[KEY_SPACE]) jump(15.0f);
 
         Vector3f velocityChange = targetVelocity - bCharacterController.rbody.velocity;
