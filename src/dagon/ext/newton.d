@@ -80,7 +80,6 @@ extern(C) uint newtonWorldRayPrefilterCallback(
     const NewtonCollision* collision,
     void* userData)
 {
-    // TODO: call NewtonRaycaster.onRayHit
     return 1;
 }
 
