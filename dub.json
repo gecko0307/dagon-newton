@@ -9,8 +9,7 @@
     
     "dependencies": {
         "dagon": "0.11.0",
-        "dagon:ftfont": "0.11.0",
-        "bindbc-newton": "~master"
+        "bindbc-newton": "0.1.1"
     },
 
     "importPaths": [
@@ -22,12 +21,25 @@
     ],
 
     "sourcePaths": ["src"],
-    "mainSourceFile": "src/main.d",
 
     "configurations": [
         {
+            "name": "library",
+            "targetType": "library"
+        },
+        {
+            "name": "import",
+            "targetType": "sourceLibrary",
+            "sourceFiles-posix": ["libdagonnewton.a"],
+            "sourceFiles-windows": ["dagonnewton.lib"]
+        },
+        {
             "name": "application",
-            "targetType": "executable"
+            "targetType": "executable",
+            "mainSourceFile": "demo/main.d",
+            "dependencies": {
+                "dagon:ftfont": "0.11.0"
+            },
         }
     ]
 }
