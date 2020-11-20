@@ -108,7 +108,7 @@ class TestScene: Scene, NewtonRaycaster
             eCube.drawable = aCubeMesh.mesh;
             eCube.material = matCube;
             eCube.position = Vector3f(0, i * 1.5, 0);
-            auto b = world.createDynamicBody(box, 80.0f);
+            auto b = world.createDynamicBody(box, 500.0f);
             cubeBodyControllers[i] = New!NewtonBodyComponent(eventManager, eCube, b);
         }
 
