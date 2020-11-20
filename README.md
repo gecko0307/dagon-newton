@@ -5,6 +5,7 @@ Work in progress! Supported features include:
 * Creating worlds, dynamic and static bodies
 * Bodies are attached to Dagon entities as EntityComponents
 * Sphere and box collision shapes (more to be added soon)
+* Static meshes
 * Adding forces and torques to bodies, setting velocity
 * Creating body group ids
 * Ray casting
