@@ -123,6 +123,7 @@ class TestScene: Scene, NewtonRaycaster
         bCharacter.enableRotation = false;
         bCharacterController = New!NewtonBodyComponent(eventManager, eCharacter, bCharacter);
         bCharacter.createUpVectorConstraint(Vector3f(0.0f, 1.0f, 0.0f));
+        bCharacter.gravity = Vector3f(0.0f, -20.0f, 0.0f);
 
         auto boxFloor = New!NewtonBoxShape(Vector3f(50, 1, 50), world);
         auto eFloor = addEntity();
@@ -141,6 +142,7 @@ class TestScene: Scene, NewtonRaycaster
         auto levelShape = New!NewtonMeshShape(aLevel.mesh, world);
         auto eLevel = addEntity();
         eLevel.drawable = aLevel.mesh;
+        eLevel.turn(90.0f);
         auto levelBody = world.createStaticBody(levelShape);
         auto levelBodyController = New!NewtonBodyComponent(eventManager, eLevel, levelBody);
 
@@ -173,13 +175,11 @@ class TestScene: Scene, NewtonRaycaster
         if (eventManager.keyPressed[KEY_D]) targetVelocity += camera.right * speed;
         if (eventManager.keyPressed[KEY_W]) targetVelocity += camera.direction * -speed;
         if (eventManager.keyPressed[KEY_S]) targetVelocity += camera.direction * speed;
-        if (eventManager.keyPressed[KEY_SPACE]) jump(20.0f);
+        if (eventManager.keyPressed[KEY_SPACE]) jump(2.0f);
 
         Vector3f velocityChange = targetVelocity - bCharacterController.rbody.velocity;
         velocityChange.y = 0.0f;
         bCharacterController.rbody.velocity = bCharacterController.rbody.velocity + velocityChange;
-        
-        bCharacterController.rbody.addForce(Vector3f(0.0f, -500.0f, 0.0f));
 
         world.update(t.delta);
 
@@ -201,7 +201,7 @@ class TestScene: Scene, NewtonRaycaster
         const float bias = 0.1f;
         if (abs(eCharacter.position.y - groundHeight) <= (characterRadius + bias))
         {
-            float jumpSpeed = sqrt(2.0f * height);
+            float jumpSpeed = sqrt(2.0f * height * -bCharacterController.rbody.gravity.y);
             Vector3f v = bCharacterController.rbody.velocity;
             v.y = jumpSpeed;
             bCharacterController.rbody.velocity = v;
