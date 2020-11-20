@@ -35,6 +35,7 @@ import dlib.math.quaternion;
 import dlib.math.utils;
 import dagon.core.event;
 import dagon.core.time;
+import dagon.graphics.mesh;
 import dagon.graphics.entity;
 public import bindbc.newton;
 
@@ -101,6 +102,7 @@ class NewtonPhysicsWorld: Owner
         defaultGroupId = NewtonMaterialGetDefaultGroupID(newtonWorld);
         kinematicGroupId = createGroupId();
         NewtonMaterialSetDefaultElasticity(newtonWorld, defaultGroupId, kinematicGroupId, 0.0f);
+        NewtonMaterialSetDefaultFriction(newtonWorld, defaultGroupId, kinematicGroupId, 1.0f, 0.0f);
     }
     
     int createGroupId()
@@ -208,6 +210,28 @@ class NewtonSphereShape: NewtonCollisionShape
     {
         float v = 0.4f * mass * radius * radius;
         return Vector3f(v, v, v);
+    }
+}
+
+class NewtonMeshShape: NewtonCollisionShape
+{
+    this(Mesh mesh, NewtonPhysicsWorld world)
+    {
+        super(world);
+        NewtonMesh* nmesh = NewtonMeshCreate(world.newtonWorld);
+        NewtonMeshBeginBuild(nmesh);
+        foreach(face; mesh.indices)
+        foreach(i; face)
+        {
+            Vector3f p = mesh.vertices[i];
+            Vector3f n = mesh.normals[i];
+            NewtonMeshAddPoint(nmesh, p.x, p.y, p.z);
+            NewtonMeshAddNormal(nmesh, n.x, n.y, n.z);
+        }
+        NewtonMeshEndBuild(nmesh);
+        
+        newtonCollision = NewtonCreateTreeCollisionFromMesh(world.newtonWorld, nmesh, 0);
+        NewtonMeshDestroy(nmesh);
     }
 }
 

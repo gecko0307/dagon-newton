@@ -11,6 +11,7 @@ class TestScene: Scene, NewtonRaycaster
     Game game;
     FontAsset aFontDroidSans14;
     OBJAsset aCubeMesh;
+    OBJAsset aLevel;
     TextureAsset aGridTexture;
 
     TextLine text;
@@ -26,6 +27,7 @@ class TestScene: Scene, NewtonRaycaster
     NewtonBodyComponent[] cubeBodyControllers;
     size_t numCubes = 100;
 
+    const float characterRadius = 0.5f;
     Entity eCharacter;
     NewtonBodyComponent bCharacterController;
     float groundHeight = -5.0f;
@@ -46,6 +48,7 @@ class TestScene: Scene, NewtonRaycaster
     {
         aFontDroidSans14 = this.addFontAsset("data/font/DroidSans.ttf", 14);
         aCubeMesh = addOBJAsset("data/cube.obj");
+        aLevel = addOBJAsset("data/level.obj");
         aGridTexture = addTextureAsset("data/grid.png");
     }
 
@@ -109,9 +112,9 @@ class TestScene: Scene, NewtonRaycaster
             cubeBodyControllers[i] = New!NewtonBodyComponent(eventManager, eCube, b);
         }
 
-        auto sphere = New!NewtonSphereShape(0.5f, world);
+        auto sphere = New!NewtonSphereShape(characterRadius, world);
         eCharacter = addEntity();
-        eCharacter.drawable = New!ShapeSphere(0.5f, 24, 16, false, assetManager);
+        eCharacter.drawable = New!ShapeSphere(characterRadius, 24, 16, false, assetManager);
         eCharacter.material = matBall;
         eCharacter.position = Vector3f(5, 1, 0);
         auto bCharacter = world.createDynamicBody(sphere, 80.0f);
@@ -122,12 +125,11 @@ class TestScene: Scene, NewtonRaycaster
         bCharacter.createUpVectorConstraint(Vector3f(0.0f, 1.0f, 0.0f));
 
         auto boxFloor = New!NewtonBoxShape(Vector3f(50, 1, 50), world);
-
         auto eFloor = addEntity();
         eFloor.position = Vector3f(0, -0.5, 0);
-        auto b = world.createStaticBody(boxFloor);
-        auto planeBodyController = New!NewtonBodyComponent(eventManager, eFloor, b);
-
+        auto floorBody = world.createStaticBody(boxFloor);
+        auto planeBodyController = New!NewtonBodyComponent(eventManager, eFloor, floorBody);
+        
         auto matPlane = New!Material(assetManager);
         matPlane.diffuse = aGridTexture.texture;
         matPlane.textureScale = Vector2f(5, 5);
@@ -135,6 +137,12 @@ class TestScene: Scene, NewtonRaycaster
         auto ePlane = addEntity();
         ePlane.drawable = New!ShapePlane(50, 50, 10, assetManager);
         ePlane.material = matPlane;
+        
+        auto levelShape = New!NewtonMeshShape(aLevel.mesh, world);
+        auto eLevel = addEntity();
+        eLevel.drawable = aLevel.mesh;
+        auto levelBody = world.createStaticBody(levelShape);
+        auto levelBodyController = New!NewtonBodyComponent(eventManager, eLevel, levelBody);
 
         text = New!TextLine(aFontDroidSans14.font, "0", assetManager);
         text.color = Color4f(1.0f, 1.0f, 1.0f, 0.7f);
@@ -155,21 +163,23 @@ class TestScene: Scene, NewtonRaycaster
     {
         Vector3f rayStart = eCharacter.position;
         Vector3f rayEnd = eCharacter.position;
-        rayEnd.y = -5.0f;
-        groundHeight = -5.0f;
+        rayEnd.y = -1000.0f;
+        groundHeight = -1000.0f;
         world.raycast(rayStart, rayEnd, this);
-
+        
         Vector3f targetVelocity = Vector3f(0, 0, 0);
         float speed = 6.0f;
         if (eventManager.keyPressed[KEY_A]) targetVelocity += camera.right * -speed;
         if (eventManager.keyPressed[KEY_D]) targetVelocity += camera.right * speed;
         if (eventManager.keyPressed[KEY_W]) targetVelocity += camera.direction * -speed;
         if (eventManager.keyPressed[KEY_S]) targetVelocity += camera.direction * speed;
-        if (eventManager.keyPressed[KEY_SPACE]) jump(15.0f);
+        if (eventManager.keyPressed[KEY_SPACE]) jump(20.0f);
 
         Vector3f velocityChange = targetVelocity - bCharacterController.rbody.velocity;
         velocityChange.y = 0.0f;
         bCharacterController.rbody.velocity = bCharacterController.rbody.velocity + velocityChange;
+        
+        bCharacterController.rbody.addForce(Vector3f(0.0f, -500.0f, 0.0f));
 
         world.update(t.delta);
 
@@ -188,7 +198,8 @@ class TestScene: Scene, NewtonRaycaster
 
     void jump(float height)
     {
-        if (abs(eCharacter.position.y - groundHeight) <= (0.5f + 0.001f))
+        const float bias = 0.1f;
+        if (abs(eCharacter.position.y - groundHeight) <= (characterRadius + bias))
         {
             float jumpSpeed = sqrt(2.0f * height);
             Vector3f v = bCharacterController.rbody.velocity;
