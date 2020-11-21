@@ -10,6 +10,7 @@ class TestScene: Scene, NewtonRaycaster
 {
     Game game;
     FontAsset aFontDroidSans14;
+    TextureAsset aEnvmap;
     OBJAsset aCubeMesh;
     OBJAsset aLevel;
     TextureAsset aGridTexture;
@@ -17,10 +18,10 @@ class TestScene: Scene, NewtonRaycaster
     TextLine text;
 
     Camera camera;
-    FreeviewComponent freeview;
+    FirstPersonViewComponent fpview;
     Light sun;
     Color4f sunColor = Color4f(1.0f, 0.7f, 0.5f, 1.0f);
-    float sunPitch = -45.0f;
+    float sunPitch = -20.0f;
     float sunTurn = 0.0f;
 
     NewtonPhysicsWorld world;
@@ -50,6 +51,7 @@ class TestScene: Scene, NewtonRaycaster
         aCubeMesh = addOBJAsset("data/cube.obj");
         aLevel = addOBJAsset("data/level.obj");
         aGridTexture = addTextureAsset("data/grid.png");
+        aEnvmap = addTextureAsset("data/Zion_7_Sunsetpeek_Ref.hdr");
     }
 
     override void afterLoad()
@@ -59,22 +61,35 @@ class TestScene: Scene, NewtonRaycaster
         world.loadPlugins("./");
 
         camera = addCamera();
-        freeview = New!FreeviewComponent(eventManager, camera);
+        fpview = New!FirstPersonViewComponent(eventManager, camera);
         game.renderer.activeCamera = camera;
 
         environment.backgroundColor = Color4f(0.9f, 0.8f, 1.0f, 1.0f);
-        environment.ambientColor = environment.backgroundColor;
-        environment.ambientEnergy = 0.5f;
+        //environment.ambientColor = environment.backgroundColor;
+        //environment.ambientEnergy = 0.5f;
+        auto envCubemap = addCubemap(1024);
+        envCubemap.fromEquirectangularMap(aEnvmap.texture);
+        environment.ambientMap = envCubemap;
 
         game.deferredRenderer.ssaoEnabled = true;
+        game.deferredRenderer.ssaoPower = 3.0;
+        game.deferredRenderer.ssaoRadius = 2.0;
+        game.postProcessingRenderer.tonemapper = Tonemapper.Filmic;
         game.postProcessingRenderer.glowEnabled = true;
         game.postProcessingRenderer.fxaaEnabled = true;
-
+        game.postProcessingRenderer.glowEnabled = true;
+        game.postProcessingRenderer.glowThreshold = 1.0f;
+        game.postProcessingRenderer.glowIntensity = 0.3f;
+        game.postProcessingRenderer.glowRadius = 7;
+        
         sun = addLight(LightType.Sun);
         sun.position.y = 50.0f;
         sun.shadowEnabled = true;
         sun.energy = 20.0f;
         sun.scatteringEnabled = false;
+        sun.scattering = 0.35f;
+        sun.mediumDensity = 0.15f;
+        sun.scatteringUseShadow = true;
         sun.color = sunColor;
         sun.rotation =
             rotationQuaternion!float(Axis.y, degtorad(sunTurn)) *
@@ -88,8 +103,7 @@ class TestScene: Scene, NewtonRaycaster
         eSky.material = New!Material(assetManager);
         eSky.material.depthWrite = false;
         eSky.material.culling = false;
-        eSky.material.diffuse = environment.backgroundColor;
-        eSky.material.shader = New!SkyShader(assetManager);
+        eSky.material.diffuse = envCubemap;
 
         auto matCube = New!Material(assetManager);
         matCube.diffuse = Color4f(1.0, 0.5, 0.3, 1.0);
@@ -114,9 +128,7 @@ class TestScene: Scene, NewtonRaycaster
 
         auto sphere = New!NewtonSphereShape(characterRadius, world);
         eCharacter = addEntity();
-        eCharacter.drawable = New!ShapeSphere(characterRadius, 24, 16, false, assetManager);
-        eCharacter.material = matBall;
-        eCharacter.position = Vector3f(5, 1, 0);
+        eCharacter.position = Vector3f(0, 2, 20);
         auto bCharacter = world.createDynamicBody(sphere, 80.0f);
         bCharacter.groupId = world.kinematicGroupId;
         bCharacter.raycastable = false;
@@ -124,6 +136,13 @@ class TestScene: Scene, NewtonRaycaster
         bCharacterController = New!NewtonBodyComponent(eventManager, eCharacter, bCharacter);
         bCharacter.createUpVectorConstraint(Vector3f(0.0f, 1.0f, 0.0f));
         bCharacter.gravity = Vector3f(0.0f, -20.0f, 0.0f);
+        
+        Vector3f sensorSize = Vector3f(0.5f, 0.2f, 0.5f);
+        auto sensorBox = New!NewtonBoxShape(sensorSize, world);
+        bCharacterSensor = world.createDynamicBody(sensorBox, 1.0f);
+        bCharacterSensor.groupId = world.sensorGroupId;
+        bCharacterSensor.sensor = true;
+        bCharacterSensor.collisionCallback = &onSensorCollision;
 
         auto boxFloor = New!NewtonBoxShape(Vector3f(50, 1, 50), world);
         auto eFloor = addEntity();
@@ -142,7 +161,7 @@ class TestScene: Scene, NewtonRaycaster
         auto levelShape = New!NewtonMeshShape(aLevel.mesh, world);
         auto eLevel = addEntity();
         eLevel.drawable = aLevel.mesh;
-        eLevel.turn(90.0f);
+        eLevel.turn(45);
         auto levelBody = world.createStaticBody(levelShape);
         auto levelBodyController = New!NewtonBodyComponent(eventManager, eLevel, levelBody);
 
@@ -152,6 +171,14 @@ class TestScene: Scene, NewtonRaycaster
         eText.drawable = text;
         eText.position = Vector3f(16.0f, 30.0f, 0.0f);
     }
+    
+    void onSensorCollision(NewtonRigidBody sensorBody, NewtonRigidBody otherBody)
+    {
+        characterOnGround = true;
+    }
+    
+    NewtonRigidBody bCharacterSensor;
+    bool characterOnGround = false;
 
     override void onKeyDown(int key)
     {
@@ -175,15 +202,19 @@ class TestScene: Scene, NewtonRaycaster
         if (eventManager.keyPressed[KEY_D]) targetVelocity += camera.right * speed;
         if (eventManager.keyPressed[KEY_W]) targetVelocity += camera.direction * -speed;
         if (eventManager.keyPressed[KEY_S]) targetVelocity += camera.direction * speed;
-        if (eventManager.keyPressed[KEY_SPACE]) jump(2.0f);
+        if (eventManager.keyPressed[KEY_SPACE]) jump(1.0f);
 
         Vector3f velocityChange = targetVelocity - bCharacterController.rbody.velocity;
         velocityChange.y = 0.0f;
         bCharacterController.rbody.velocity = bCharacterController.rbody.velocity + velocityChange;
 
+        characterOnGround = false;
         world.update(t.delta);
+        
+        auto m = bCharacterController.rbody.transformation * translationMatrix(Vector3f(0.0f, -characterRadius, 0.0f));
+        NewtonBodySetMatrix(bCharacterSensor.newtonBody, m.arrayof.ptr);
 
-        freeview.setTargetSmooth(eCharacter.position, 1.0f);
+        camera.position = bCharacterController.rbody.position.xyz + Vector3f(0.0f, characterRadius, 0.0f);
 
         uint n = sprintf(txt.ptr, "FPS: %u", cast(int)(1.0 / eventManager.deltaTime));
         string s = cast(string)txt[0..n];
@@ -198,13 +229,13 @@ class TestScene: Scene, NewtonRaycaster
 
     void jump(float height)
     {
-        const float bias = 0.1f;
-        if (abs(eCharacter.position.y - groundHeight) <= (characterRadius + bias))
+        if (characterOnGround)
         {
             float jumpSpeed = sqrt(2.0f * height * -bCharacterController.rbody.gravity.y);
             Vector3f v = bCharacterController.rbody.velocity;
             v.y = jumpSpeed;
             bCharacterController.rbody.velocity = v;
+            characterOnGround = false;
         }
     }
 }

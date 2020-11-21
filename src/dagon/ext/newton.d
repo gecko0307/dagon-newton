@@ -39,49 +39,100 @@ import dagon.graphics.mesh;
 import dagon.graphics.entity;
 public import bindbc.newton;
 
-extern(C) nothrow @nogc void newtonBodyForceCallback(
-    const NewtonBody* nbody,
-    dFloat timestep,
-    int threadIndex)
+extern(C)
 {
-    NewtonRigidBody b = cast(NewtonRigidBody)NewtonBodyGetUserData(nbody);
-    if (b)
+    nothrow @nogc void newtonBodyForceCallback(
+        const NewtonBody* nbody,
+        dFloat timestep,
+        int threadIndex)
     {
-        Vector3f gravityForce = b.gravity * b.mass;
-        NewtonBodyAddForce(nbody, gravityForce.arrayof.ptr);
-        NewtonBodyAddForce(nbody, b.force.arrayof.ptr);
-        NewtonBodyAddTorque(nbody, b.torque.arrayof.ptr);
-        b.force = Vector3f(0.0f, 0.0f, 0.0f);
-        b.torque = Vector3f(0.0f, 0.0f, 0.0f);
+        NewtonRigidBody b = cast(NewtonRigidBody)NewtonBodyGetUserData(nbody);
+        if (b)
+        {
+            Vector3f gravityForce = b.gravity * b.mass;
+            NewtonBodyAddForce(nbody, gravityForce.arrayof.ptr);
+            NewtonBodyAddForce(nbody, b.force.arrayof.ptr);
+            NewtonBodyAddTorque(nbody, b.torque.arrayof.ptr);
+            b.force = Vector3f(0.0f, 0.0f, 0.0f);
+            b.torque = Vector3f(0.0f, 0.0f, 0.0f);
+        }
     }
-}
 
-extern(C) dFloat newtonWorldRayFilterCallback(
-    const NewtonBody* nbody,
-    const NewtonCollision* shapeHit,
-    const dFloat* hitContact,
-    const dFloat* hitNormal,
-    dLong collisionID,
-    void* userData,
-    dFloat intersectParam)
-{
-    NewtonRaycaster raycaster = cast(NewtonRaycaster)userData;
-    NewtonRigidBody b = cast(NewtonRigidBody)NewtonBodyGetUserData(nbody);
-    if (raycaster && b)
+    dFloat newtonWorldRayFilterCallback(
+        const NewtonBody* nbody,
+        const NewtonCollision* shapeHit,
+        const dFloat* hitContact,
+        const dFloat* hitNormal,
+        dLong collisionID,
+        void* userData,
+        dFloat intersectParam)
     {
-        Vector3f p = Vector3f(hitContact[0], hitContact[1], hitContact[2]);
-        Vector3f n = Vector3f(hitNormal[0], hitNormal[1], hitNormal[2]);
-        raycaster.onRayHit(b, p, n);
+        NewtonRaycaster raycaster = cast(NewtonRaycaster)userData;
+        NewtonRigidBody b = cast(NewtonRigidBody)NewtonBodyGetUserData(nbody);
+        if (raycaster && b)
+        {
+            Vector3f p = Vector3f(hitContact[0], hitContact[1], hitContact[2]);
+            Vector3f n = Vector3f(hitNormal[0], hitNormal[1], hitNormal[2]);
+            raycaster.onRayHit(b, p, n);
+        }
+        return 1.0f;
     }
-    return 1.0f;
-}
 
-extern(C) uint newtonWorldRayPrefilterCallback(
-    const NewtonBody* nbody,
-    const NewtonCollision* collision,
-    void* userData)
-{
-    return 1;
+    uint newtonWorldRayPrefilterCallback(
+        const NewtonBody* nbody,
+        const NewtonCollision* collision,
+        void* userData)
+    {
+        return 1;
+    }
+    
+    void newtonSensorContactsProcess(
+        const NewtonJoint* contactJoint,
+        dFloat timestep,
+        int threadIndex)
+    {
+        void* nextContact;
+        uint numContacts = 0;
+        for (void* contact = NewtonContactJointGetFirstContact(contactJoint); contact; contact = nextContact)
+        {
+            nextContact = NewtonContactJointGetNextContact(contactJoint, contact);
+            NewtonContactJointRemoveContact(contactJoint, contact);
+            numContacts++;
+        }
+        
+        if (numContacts)
+        {
+            NewtonBody* b0 = NewtonJointGetBody0(contactJoint);
+            NewtonBody* b1 = NewtonJointGetBody1(contactJoint);
+            NewtonRigidBody body0 = cast(NewtonRigidBody)NewtonBodyGetUserData(b0);
+            NewtonRigidBody body1 = cast(NewtonRigidBody)NewtonBodyGetUserData(b1);
+            
+            if (body0 && body0.isSensor)
+            {
+                body0.onCollision(body1);
+            }
+            else if (body1 && body1.isSensor)
+            {
+                body1.onCollision(body0);
+            }
+        }
+    }
+    
+    int newtonSensorOnAABBOverlapCallback(
+        const NewtonJoint* contact, 
+        dFloat timestep,
+        int threadIndex)
+    {
+        return 1;
+    }
+    
+    int newtonSensorOnAABBOverlapCancelCallback(
+        const NewtonJoint* contact, 
+        dFloat timestep,
+        int threadIndex)
+    {
+        return 0;
+    }
 }
 
 interface NewtonRaycaster
@@ -94,6 +145,7 @@ class NewtonPhysicsWorld: Owner
     NewtonWorld* newtonWorld;
     int defaultGroupId;
     int kinematicGroupId;
+    int sensorGroupId;
 
     this(Owner o)
     {
@@ -101,8 +153,11 @@ class NewtonPhysicsWorld: Owner
         newtonWorld = NewtonCreate();
         defaultGroupId = NewtonMaterialGetDefaultGroupID(newtonWorld);
         kinematicGroupId = createGroupId();
+        sensorGroupId = createGroupId();
         NewtonMaterialSetDefaultElasticity(newtonWorld, defaultGroupId, kinematicGroupId, 0.0f);
-        NewtonMaterialSetDefaultFriction(newtonWorld, defaultGroupId, kinematicGroupId, 1.0f, 0.0f);
+        NewtonMaterialSetDefaultFriction(newtonWorld, defaultGroupId, kinematicGroupId, 0.5f, 0.0f);
+        NewtonMaterialSetCollisionCallback(newtonWorld, sensorGroupId, defaultGroupId, null, &newtonSensorContactsProcess);
+        NewtonMaterialSetCollisionCallback(newtonWorld, kinematicGroupId, sensorGroupId, &newtonSensorOnAABBOverlapCancelCallback, null);
     }
     
     int createGroupId()
@@ -179,6 +234,7 @@ class NewtonBoxShape: NewtonCollisionShape
     {
         super(world);
         newtonCollision = NewtonCreateBox(world.newtonWorld, extents.x, extents.y, extents.z, 0, null);
+        NewtonCollisionSetUserData(newtonCollision, cast(void*)this);
         halfSize = extents * 0.5f;
     }
 
@@ -204,6 +260,7 @@ class NewtonSphereShape: NewtonCollisionShape
         super(world);
         this.radius = radius;
         newtonCollision = NewtonCreateSphere(world.newtonWorld, radius, 0, null);
+        NewtonCollisionSetUserData(newtonCollision, cast(void*)this);
     }
 
     override Vector3f inertia(float mass)
@@ -231,6 +288,8 @@ class NewtonMeshShape: NewtonCollisionShape
         NewtonMeshEndBuild(nmesh);
         
         newtonCollision = NewtonCreateTreeCollisionFromMesh(world.newtonWorld, nmesh, 0);
+        NewtonCollisionSetUserData(newtonCollision, cast(void*)this);
+        
         NewtonMeshDestroy(nmesh);
     }
 }
@@ -250,8 +309,18 @@ class NewtonRigidBody: Owner
     Matrix4x4f transformation = Matrix4x4f.identity;
     bool enableRotation = true;
     bool raycastable = true;
+    bool sensor = false;
+    void delegate(NewtonRigidBody, NewtonRigidBody) collisionCallback;
 
-    bool isRaycastable() { return raycastable; }
+    bool isRaycastable()
+    {
+        return raycastable;
+    }
+    
+    bool isSensor()
+    {
+        return sensor;
+    }
 
     this(NewtonCollisionShape shape, float mass, NewtonPhysicsWorld world, Owner o)
     {
@@ -266,6 +335,12 @@ class NewtonRigidBody: Owner
         this.inertia = shape.inertia(mass);
         NewtonBodySetMassMatrix(newtonBody, mass, inertia.x, inertia.y, inertia.z);
         NewtonBodySetForceAndTorqueCallback(newtonBody, &newtonBodyForceCallback);
+        
+        collisionCallback = &defaultCollisionCallback;
+    }
+    
+    void defaultCollisionCallback(NewtonRigidBody, NewtonRigidBody)
+    {
     }
 
     void update(double dt)
@@ -282,6 +357,7 @@ class NewtonRigidBody: Owner
             transformation = translationMatrix(position.xyz);
             NewtonBodySetMatrix(newtonBody, transformation.arrayof.ptr);
         }
+        // TODO: enableTranslation
     }
     
     void groupId(int id) @property
@@ -320,6 +396,11 @@ class NewtonRigidBody: Owner
         Vector3f v;
         NewtonBodyGetVelocity(newtonBody, v.arrayof.ptr);
         return v;
+    }
+    
+    void onCollision(NewtonRigidBody otherBody)
+    {
+        collisionCallback(this, otherBody);
     }
 }
 
