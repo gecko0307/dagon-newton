@@ -72,8 +72,8 @@ class TestScene: Scene, NewtonRaycaster
         environment.ambientMap = envCubemap;
 
         game.deferredRenderer.ssaoEnabled = true;
-        game.deferredRenderer.ssaoPower = 3.0;
-        game.deferredRenderer.ssaoRadius = 2.0;
+        //game.deferredRenderer.ssaoPower = 4.0;
+        game.deferredRenderer.ssaoRadius = 0.5;
         game.postProcessingRenderer.tonemapper = Tonemapper.Filmic;
         game.postProcessingRenderer.glowEnabled = true;
         game.postProcessingRenderer.fxaaEnabled = true;
