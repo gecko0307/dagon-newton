@@ -1,6 +1,9 @@
+module main;
+
 import std.stdio;
 import std.conv;
 import std.math;
+import std.random;
 
 import dagon;
 import dagon.ext.ftfont;
@@ -69,8 +72,9 @@ class TestScene: Scene
         environment.ambientEnergy = 0.5f;
 
         game.deferredRenderer.ssaoEnabled = true;
-        game.deferredRenderer.ssaoPower = 4.0;
-        game.deferredRenderer.ssaoRadius = 0.5;
+        game.deferredRenderer.ssaoPower = 4.0f;
+        game.deferredRenderer.ssaoRadius = 0.25f;
+        game.deferredRenderer.ssaoDenoise = 1.0f;
         game.postProcessingRenderer.tonemapper = Tonemapper.Filmic;
         game.postProcessingRenderer.glowEnabled = true;
         game.postProcessingRenderer.fxaaEnabled = true;
@@ -92,6 +96,30 @@ class TestScene: Scene
             rotationQuaternion!float(Axis.y, degtorad(sunTurn)) *
             rotationQuaternion!float(Axis.x, degtorad(sunPitch));
 
+        auto light1 = addLight(LightType.AreaSphere);
+        light1.castShadow = false;
+        light1.position = Vector3f(4, 6.5, -4);
+        light1.color = Color4f(1.0f, 0.5f, 0.0f, 1.0f);
+        light1.energy = 20.0f;
+        light1.radius = 0.4f;
+        light1.volumeRadius = 10.0f;
+        
+        auto light2 = addLight(LightType.AreaSphere);
+        light2.castShadow = false;
+        light2.position = Vector3f(-10, 2.5, -4);
+        light2.color = Color4f(1.0f, 0.5f, 0.0f, 1.0f);
+        light2.energy = 20.0f;
+        light2.radius = 0.2f;
+        light2.volumeRadius = 10.0f;
+        
+        auto light3 = addLight(LightType.AreaSphere);
+        light3.castShadow = false;
+        light3.position = Vector3f(-14, 2.5, 11);
+        light3.color = Color4f(1.0f, 0.5f, 0.0f, 1.0f);
+        light3.energy = 20.0f;
+        light3.radius = 0.2f;
+        light3.volumeRadius = 10.0f;
+
         auto eSky = addEntity();
         auto psync = New!PositionSync(eventManager, eSky, camera);
         eSky.drawable = New!ShapeBox(Vector3f(1.0f, 1.0f, 1.0f), assetManager);
@@ -101,10 +129,24 @@ class TestScene: Scene
         eSky.material.depthWrite = false;
         eSky.material.culling = false;
         eSky.material.diffuse = envCubemap;
+        
+        auto matPink = New!Material(assetManager);
+        matPink.diffuse = Color4f(1.0, 0.36, 0.478, 1.0);
+        matPink.roughness = 0.2f;
 
-        auto matCube = New!Material(assetManager);
-        matCube.diffuse = Color4f(1.0, 0.5, 0.3, 1.0);
-        matCube.roughness = 0.2f;
+        auto matOrange = New!Material(assetManager);
+        matOrange.diffuse = Color4f(1.0, 0.5, 0.3, 1.0);
+        matOrange.roughness = 0.2f;
+        
+        auto matYellow = New!Material(assetManager);
+        matYellow.diffuse = Color4f(1.0, 0.87, 0.36, 1.0);
+        matYellow.roughness = 0.2f;
+        
+        auto matGreen = New!Material(assetManager);
+        matGreen.diffuse = Color4f(0.517, 1.0, 0.36, 1.0);
+        matGreen.roughness = 0.2f;
+        
+        auto materials = [matPink, matOrange, matYellow, matGreen];
 
         auto box = New!NewtonBoxShape(Vector3f(1, 1, 1), world);
 
@@ -113,7 +155,7 @@ class TestScene: Scene
         {
             auto eCube = addEntity();
             eCube.drawable = aCubeMesh.mesh;
-            eCube.material = matCube;
+            eCube.material = materials[uniform(0, $)];
             eCube.position = Vector3f(3, i * 1.5, 5);
             auto b = world.createDynamicBody(box, 500.0f);
             cubeBodyControllers[i] = New!NewtonBodyComponent(eventManager, eCube, b);
@@ -152,12 +194,22 @@ class TestScene: Scene
         auto eText = addEntityHUD();
         eText.drawable = text;
         eText.position = Vector3f(16.0f, 30.0f, 0.0f);
+        
+        eventManager.showCursor(false);
     }
 
     override void onKeyDown(int key)
     {
         if (key == KEY_ESCAPE)
             application.exit();
+    }
+    
+    override void onMouseButtonUp(int button)
+    {
+        fpview.active = !fpview.active;
+        eventManager.showCursor(!fpview.active);
+        fpview.prevMouseX = eventManager.mouseX;
+        fpview.prevMouseY = eventManager.mouseY;
     }
 
     char[100] txt;
