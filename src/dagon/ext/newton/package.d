@@ -26,6 +26,7 @@ module dagon.ext.newton;
 import std.stdio;
 import std.string;
 import std.conv;
+import std.math;
 import dlib.core.ownership;
 import dlib.core.memory;
 import dlib.math.vector;
@@ -440,5 +441,102 @@ class NewtonBodyComponent: EntityComponent
         entity.prevAbsoluteTransformation = entity.prevTransformation;
 
         prevTransformation = entity.transformation;
+    }
+}
+
+class NewtonCharacterComponent: EntityComponent
+{
+    NewtonSphereShape shape;
+    NewtonRigidBody rbody;
+    NewtonRigidBody sensorBody;
+    enum float radius = 0.5f;
+    enum float mass = 80.0f;
+    bool onGround = false;
+    Vector3f targetVelocity = Vector3f(0.0f, 0.0f, 0.0f);
+    Matrix4x4f prevTransformation;
+    
+    this(EventManager em, Entity e, NewtonPhysicsWorld world)
+    {
+        super(em, e);
+        shape = New!NewtonSphereShape(radius, world);
+        rbody = world.createDynamicBody(shape, mass);
+        rbody.groupId = world.kinematicGroupId;
+        rbody.raycastable = false;
+        rbody.enableRotation = false;
+        
+        Quaternionf rot = e.rotation;
+        rbody.transformation =
+            translationMatrix(e.position) *
+            rot.toMatrix4x4;
+        NewtonBodySetMatrix(rbody.newtonBody, rbody.transformation.arrayof.ptr);
+        prevTransformation = Matrix4x4f.identity;
+        
+        rbody.createUpVectorConstraint(Vector3f(0.0f, 1.0f, 0.0f));
+        rbody.gravity = Vector3f(0.0f, -20.0f, 0.0f);
+        
+        Vector3f sensorSize = Vector3f(radius, radius * 0.5f, radius);
+        auto sensorShape = New!NewtonBoxShape(sensorSize, world);
+        sensorBody = world.createDynamicBody(sensorShape, 1.0f);
+        sensorBody.groupId = world.sensorGroupId;
+        sensorBody.sensor = true;
+        sensorBody.collisionCallback = &onSensorCollision;
+    }
+    
+    void onSensorCollision(NewtonRigidBody sensorBody, NewtonRigidBody otherBody)
+    {
+        onGround = true;
+    }
+    
+    void updateVelocity()
+    {
+        Vector3f velocityChange = targetVelocity - rbody.velocity;
+        velocityChange.y = 0.0f;
+        rbody.velocity = rbody.velocity + velocityChange;
+
+        onGround = false;
+        auto m = rbody.transformation * translationMatrix(Vector3f(0.0f, -radius, 0.0f));
+        NewtonBodySetMatrix(sensorBody.newtonBody, m.arrayof.ptr);
+
+        targetVelocity = Vector3f(0.0f, 0.0f, 0.0f);
+    }
+    
+    override void update(Time t)
+    {
+        rbody.update(t.delta);
+
+        entity.prevTransformation = prevTransformation;
+
+        entity.position = rbody.position.xyz;
+        entity.transformation = rbody.transformation * scaleMatrix(entity.scaling);
+        entity.invTransformation = entity.transformation.inverse;
+        entity.rotation = rbody.rotation;
+
+        entity.absoluteTransformation = entity.transformation;
+        entity.invAbsoluteTransformation = entity.invTransformation;
+        entity.prevAbsoluteTransformation = entity.prevTransformation;
+
+        prevTransformation = entity.transformation;
+    }
+    
+    void move(Vector3f direction, float speed)
+    {
+        targetVelocity += direction * speed;
+    }
+    
+    void jump(float height)
+    {
+        if (onGround)
+        {
+            float jumpSpeed = sqrt(2.0f * height * -rbody.gravity.y);
+            Vector3f v = rbody.velocity;
+            v.y = jumpSpeed;
+            rbody.velocity = v;
+            onGround = false;
+        }
+    }
+    
+    Vector3f position()
+    {
+        return rbody.position.xyz;
     }
 }

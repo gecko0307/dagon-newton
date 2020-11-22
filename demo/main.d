@@ -6,7 +6,7 @@ import dagon;
 import dagon.ext.ftfont;
 import dagon.ext.newton;
 
-class TestScene: Scene, NewtonRaycaster
+class TestScene: Scene
 {
     Game game;
     FontAsset aFontDroidSans14;
@@ -28,10 +28,8 @@ class TestScene: Scene, NewtonRaycaster
     NewtonBodyComponent[] cubeBodyControllers;
     size_t numCubes = 100;
 
-    const float characterRadius = 0.5f;
     Entity eCharacter;
-    NewtonBodyComponent bCharacterController;
-    float groundHeight = -5.0f;
+    NewtonCharacterComponent character;
 
     this(Game game)
     {
@@ -65,14 +63,13 @@ class TestScene: Scene, NewtonRaycaster
         game.renderer.activeCamera = camera;
 
         environment.backgroundColor = Color4f(0.9f, 0.8f, 1.0f, 1.0f);
-        //environment.ambientColor = environment.backgroundColor;
-        //environment.ambientEnergy = 0.5f;
         auto envCubemap = addCubemap(1024);
         envCubemap.fromEquirectangularMap(aEnvmap.texture);
         environment.ambientMap = envCubemap;
+        environment.ambientEnergy = 0.5f;
 
         game.deferredRenderer.ssaoEnabled = true;
-        //game.deferredRenderer.ssaoPower = 4.0;
+        game.deferredRenderer.ssaoPower = 2.0;
         game.deferredRenderer.ssaoRadius = 0.5;
         game.postProcessingRenderer.tonemapper = Tonemapper.Filmic;
         game.postProcessingRenderer.glowEnabled = true;
@@ -85,7 +82,7 @@ class TestScene: Scene, NewtonRaycaster
         sun = addLight(LightType.Sun);
         sun.position.y = 50.0f;
         sun.shadowEnabled = true;
-        sun.energy = 20.0f;
+        sun.energy = 10.0f;
         sun.scatteringEnabled = false;
         sun.scattering = 0.35f;
         sun.mediumDensity = 0.15f;
@@ -107,11 +104,7 @@ class TestScene: Scene, NewtonRaycaster
 
         auto matCube = New!Material(assetManager);
         matCube.diffuse = Color4f(1.0, 0.5, 0.3, 1.0);
-        matCube.roughness = 0.4f;
-
-        auto matBall = New!Material(assetManager);
-        matBall.diffuse = Color4f(0.7, 0.1, 0.1, 1.0);
-        matBall.roughness = 0.3f;
+        matCube.roughness = 0.2f;
 
         auto box = New!NewtonBoxShape(Vector3f(1, 1, 1), world);
 
@@ -126,23 +119,9 @@ class TestScene: Scene, NewtonRaycaster
             cubeBodyControllers[i] = New!NewtonBodyComponent(eventManager, eCube, b);
         }
 
-        auto sphere = New!NewtonSphereShape(characterRadius, world);
         eCharacter = addEntity();
         eCharacter.position = Vector3f(0, 2, 20);
-        auto bCharacter = world.createDynamicBody(sphere, 80.0f);
-        bCharacter.groupId = world.kinematicGroupId;
-        bCharacter.raycastable = false;
-        bCharacter.enableRotation = false;
-        bCharacterController = New!NewtonBodyComponent(eventManager, eCharacter, bCharacter);
-        bCharacter.createUpVectorConstraint(Vector3f(0.0f, 1.0f, 0.0f));
-        bCharacter.gravity = Vector3f(0.0f, -20.0f, 0.0f);
-        
-        Vector3f sensorSize = Vector3f(0.5f, 0.2f, 0.5f);
-        auto sensorBox = New!NewtonBoxShape(sensorSize, world);
-        bCharacterSensor = world.createDynamicBody(sensorBox, 1.0f);
-        bCharacterSensor.groupId = world.sensorGroupId;
-        bCharacterSensor.sensor = true;
-        bCharacterSensor.collisionCallback = &onSensorCollision;
+        character = New!NewtonCharacterComponent(eventManager, eCharacter, world);
 
         auto boxFloor = New!NewtonBoxShape(Vector3f(50, 1, 50), world);
         auto eFloor = addEntity();
@@ -162,6 +141,9 @@ class TestScene: Scene, NewtonRaycaster
         auto eLevel = addEntity();
         eLevel.drawable = aLevel.mesh;
         eLevel.turn(45);
+        auto matLevel = New!Material(assetManager);
+        matLevel.roughness = 0.2f;
+        eLevel.material = matLevel;
         auto levelBody = world.createStaticBody(levelShape);
         auto levelBodyController = New!NewtonBodyComponent(eventManager, eLevel, levelBody);
 
@@ -171,14 +153,6 @@ class TestScene: Scene, NewtonRaycaster
         eText.drawable = text;
         eText.position = Vector3f(16.0f, 30.0f, 0.0f);
     }
-    
-    void onSensorCollision(NewtonRigidBody sensorBody, NewtonRigidBody otherBody)
-    {
-        characterOnGround = true;
-    }
-    
-    NewtonRigidBody bCharacterSensor;
-    bool characterOnGround = false;
 
     override void onKeyDown(int key)
     {
@@ -190,53 +164,21 @@ class TestScene: Scene, NewtonRaycaster
 
     override void onUpdate(Time t)
     {
-        Vector3f rayStart = eCharacter.position;
-        Vector3f rayEnd = eCharacter.position;
-        rayEnd.y = -1000.0f;
-        groundHeight = -1000.0f;
-        world.raycast(rayStart, rayEnd, this);
-        
-        Vector3f targetVelocity = Vector3f(0, 0, 0);
         float speed = 6.0f;
-        if (eventManager.keyPressed[KEY_A]) targetVelocity += camera.right * -speed;
-        if (eventManager.keyPressed[KEY_D]) targetVelocity += camera.right * speed;
-        if (eventManager.keyPressed[KEY_W]) targetVelocity += camera.direction * -speed;
-        if (eventManager.keyPressed[KEY_S]) targetVelocity += camera.direction * speed;
-        if (eventManager.keyPressed[KEY_SPACE]) jump(1.0f);
-
-        Vector3f velocityChange = targetVelocity - bCharacterController.rbody.velocity;
-        velocityChange.y = 0.0f;
-        bCharacterController.rbody.velocity = bCharacterController.rbody.velocity + velocityChange;
-
-        characterOnGround = false;
-        world.update(t.delta);
+        if (eventManager.keyPressed[KEY_A]) character.move(camera.right, -speed);
+        if (eventManager.keyPressed[KEY_D]) character.move(camera.right, speed);
+        if (eventManager.keyPressed[KEY_W]) character.move(camera.direction, -speed);
+        if (eventManager.keyPressed[KEY_S]) character.move(camera.direction, speed);
+        if (eventManager.keyPressed[KEY_SPACE]) character.jump(1.0f);
+        character.updateVelocity();
         
-        auto m = bCharacterController.rbody.transformation * translationMatrix(Vector3f(0.0f, -characterRadius, 0.0f));
-        NewtonBodySetMatrix(bCharacterSensor.newtonBody, m.arrayof.ptr);
+        world.update(t.delta);
 
-        camera.position = bCharacterController.rbody.position.xyz + Vector3f(0.0f, characterRadius, 0.0f);
+        camera.position = character.position + Vector3f(0.0f, character.radius, 0.0f);
 
         uint n = sprintf(txt.ptr, "FPS: %u", cast(int)(1.0 / eventManager.deltaTime));
         string s = cast(string)txt[0..n];
         text.setText(s);
-    }
-
-    void onRayHit(NewtonRigidBody nbody, Vector3f hitPoint, Vector3f hitNormal)
-    {
-        if (nbody.raycastable && hitPoint.y > groundHeight)
-            groundHeight = hitPoint.y;
-    }
-
-    void jump(float height)
-    {
-        if (characterOnGround)
-        {
-            float jumpSpeed = sqrt(2.0f * height * -bCharacterController.rbody.gravity.y);
-            Vector3f v = bCharacterController.rbody.velocity;
-            v.y = jumpSpeed;
-            bCharacterController.rbody.velocity = v;
-            characterOnGround = false;
-        }
     }
 }
 
