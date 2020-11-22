@@ -215,9 +215,15 @@ class TestScene: Scene
         fpview.prevMouseY = eventManager.mouseY;
     }
 
-    char[100] txt;
-
     override void onUpdate(Time t)
+    {
+        updateCharacter();
+        world.update(t.delta);
+        camera.position = character.position + Vector3f(0.0f, character.radius * 0.75f, 0.0f);
+        updateText();
+    }
+    
+    void updateCharacter()
     {
         float speed = 6.0f;
         if (eventManager.keyPressed[KEY_A]) character.move(camera.right, -speed);
@@ -226,11 +232,11 @@ class TestScene: Scene
         if (eventManager.keyPressed[KEY_S]) character.move(camera.direction, speed);
         if (eventManager.keyPressed[KEY_SPACE]) character.jump(1.0f);
         character.updateVelocity();
-        
-        world.update(t.delta);
-
-        camera.position = character.position + Vector3f(0.0f, character.radius * 0.75f, 0.0f);
-
+    }
+    
+    char[100] txt;
+    void updateText()
+    {
         uint n = sprintf(txt.ptr, "FPS: %u", cast(int)(1.0 / eventManager.deltaTime));
         string s = cast(string)txt[0..n];
         text.setText(s);
@@ -242,21 +248,7 @@ class TestGame: Game
     this(uint w, uint h, bool fullscreen, string title, string[] args)
     {
         super(w, h, fullscreen, title, args);
-
         currentScene = New!TestScene(this);
-
-        deferredRenderer.setViewport(0, 0, eventManager.windowWidth, eventManager.windowHeight);
-        postProcessingRenderer.setViewport(0, 0, eventManager.windowWidth, eventManager.windowHeight);
-        presentRenderer.setViewport(0, 0, eventManager.windowWidth, eventManager.windowHeight);
-        hudRenderer.setViewport(0, 0, width, height);
-    }
-
-    override void onResize(int width, int height)
-    {
-        deferredRenderer.setViewport(0, 0, width, height);
-        postProcessingRenderer.setViewport(0, 0, width, height);
-        presentRenderer.setViewport(0, 0, width, height);
-        hudRenderer.setViewport(0, 0, width, height);
     }
 }
 
