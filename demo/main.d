@@ -103,22 +103,25 @@ class TestScene: Scene
         light1.energy = 20.0f;
         light1.radius = 0.4f;
         light1.volumeRadius = 10.0f;
+        light1.specular = 0.0f;
         
         auto light2 = addLight(LightType.AreaSphere);
         light2.castShadow = false;
         light2.position = Vector3f(-10, 2.5, -4);
         light2.color = Color4f(1.0f, 0.5f, 0.0f, 1.0f);
-        light2.energy = 20.0f;
+        light2.energy = 15.0f;
         light2.radius = 0.2f;
         light2.volumeRadius = 10.0f;
+        light2.specular = 0.0f;
         
         auto light3 = addLight(LightType.AreaSphere);
         light3.castShadow = false;
         light3.position = Vector3f(-14, 2.5, 11);
         light3.color = Color4f(1.0f, 0.5f, 0.0f, 1.0f);
-        light3.energy = 20.0f;
+        light3.energy = 10.0f;
         light3.radius = 0.2f;
         light3.volumeRadius = 10.0f;
+        light3.specular = 0.0f;
 
         auto eSky = addEntity();
         auto psync = New!PositionSync(eventManager, eSky, camera);

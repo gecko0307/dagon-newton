@@ -8,7 +8,7 @@
     ],
     
     "dependencies": {
-        "dagon": "0.11.0",
+        "dagon": "~master",
         "bindbc-newton": "0.1.1"
     },
 
