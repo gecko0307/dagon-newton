@@ -69,7 +69,7 @@ class TestScene: Scene
         environment.ambientEnergy = 0.5f;
 
         game.deferredRenderer.ssaoEnabled = true;
-        game.deferredRenderer.ssaoPower = 2.0;
+        game.deferredRenderer.ssaoPower = 4.0;
         game.deferredRenderer.ssaoRadius = 0.5;
         game.postProcessingRenderer.tonemapper = Tonemapper.Filmic;
         game.postProcessingRenderer.glowEnabled = true;
@@ -114,7 +114,7 @@ class TestScene: Scene
             auto eCube = addEntity();
             eCube.drawable = aCubeMesh.mesh;
             eCube.material = matCube;
-            eCube.position = Vector3f(0, i * 1.5, 0);
+            eCube.position = Vector3f(3, i * 1.5, 5);
             auto b = world.createDynamicBody(box, 500.0f);
             cubeBodyControllers[i] = New!NewtonBodyComponent(eventManager, eCube, b);
         }
@@ -142,7 +142,7 @@ class TestScene: Scene
         eLevel.drawable = aLevel.mesh;
         eLevel.turn(45);
         auto matLevel = New!Material(assetManager);
-        matLevel.roughness = 0.2f;
+        matLevel.roughness = 0.3f;
         eLevel.material = matLevel;
         auto levelBody = world.createStaticBody(levelShape);
         auto levelBodyController = New!NewtonBodyComponent(eventManager, eLevel, levelBody);
@@ -174,7 +174,7 @@ class TestScene: Scene
         
         world.update(t.delta);
 
-        camera.position = character.position + Vector3f(0.0f, character.radius, 0.0f);
+        camera.position = character.position + Vector3f(0.0f, character.radius * 0.75f, 0.0f);
 
         uint n = sprintf(txt.ptr, "FPS: %u", cast(int)(1.0 / eventManager.deltaTime));
         string s = cast(string)txt[0..n];
