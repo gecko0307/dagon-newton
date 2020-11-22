@@ -9,5 +9,6 @@ Work in progress! Supported features include:
 * Adding forces and torques to bodies, setting velocity
 * Creating body group ids
 * Ray casting
+* Simple character controller
 
 ![Screenshot](screenshot.jpg)
