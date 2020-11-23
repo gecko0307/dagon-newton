@@ -166,7 +166,7 @@ class TestScene: Scene
 
         eCharacter = addEntity();
         eCharacter.position = Vector3f(0, 2, 20);
-        character = New!NewtonCharacterComponent(eventManager, eCharacter, world);
+        character = New!NewtonCharacterComponent(eventManager, eCharacter, 1.8f, 80.0f, world);
 
         auto boxFloor = New!NewtonBoxShape(Vector3f(50, 1, 50), world);
         auto eFloor = addEntity();
@@ -219,7 +219,7 @@ class TestScene: Scene
     {
         updateCharacter();
         world.update(t.delta);
-        camera.position = character.position + Vector3f(0.0f, character.radius * 0.75f, 0.0f);
+        camera.position = character.eyePoint;
         updateText();
     }
     
@@ -231,6 +231,8 @@ class TestScene: Scene
         if (eventManager.keyPressed[KEY_W]) character.move(camera.direction, -speed);
         if (eventManager.keyPressed[KEY_S]) character.move(camera.direction, speed);
         if (eventManager.keyPressed[KEY_SPACE]) character.jump(1.0f);
+        if (eventManager.keyDown[KEY_LCTRL]) character.duck();
+        else character.unduck();
         character.updateVelocity();
     }
     

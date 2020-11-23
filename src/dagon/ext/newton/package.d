@@ -219,11 +219,11 @@ abstract class NewtonCollisionShape: Owner
         if (newtonCollision)
             NewtonDestroyCollision(newtonCollision);
     }
-
-    // Override me
-    Vector3f inertia(float mass)
+    
+    void setTransformation(Matrix4x4f m)
     {
-        return Vector3f(mass, mass, mass);
+        if (newtonCollision)
+            NewtonCollisionSetMatrix(newtonCollision, m.arrayof.ptr);
     }
 }
 
@@ -238,18 +238,6 @@ class NewtonBoxShape: NewtonCollisionShape
         NewtonCollisionSetUserData(newtonCollision, cast(void*)this);
         halfSize = extents * 0.5f;
     }
-
-    override Vector3f inertia(float mass)
-    {
-        float x2 = halfSize.x * halfSize.x;
-        float y2 = halfSize.y * halfSize.y;
-        float z2 = halfSize.z * halfSize.z;
-        return Vector3f(
-            (y2 + z2)/3 * mass,
-            (x2 + z2)/3 * mass,
-            (x2 + y2)/3 * mass
-        );
-    }
 }
 
 class NewtonSphereShape: NewtonCollisionShape
@@ -262,12 +250,6 @@ class NewtonSphereShape: NewtonCollisionShape
         this.radius = radius;
         newtonCollision = NewtonCreateSphere(world.newtonWorld, radius, 0, null);
         NewtonCollisionSetUserData(newtonCollision, cast(void*)this);
-    }
-
-    override Vector3f inertia(float mass)
-    {
-        float v = 0.4f * mass * radius * radius;
-        return Vector3f(v, v, v);
     }
 }
 
@@ -295,13 +277,27 @@ class NewtonMeshShape: NewtonCollisionShape
     }
 }
 
+class NewtonCompoundShape: NewtonCollisionShape
+{
+    this(NewtonCollisionShape[] shapes, NewtonPhysicsWorld world)
+    {
+        super(world);
+        newtonCollision = NewtonCreateCompoundCollision(world.newtonWorld, 0);
+        NewtonCompoundCollisionBeginAddRemove(newtonCollision);
+        foreach(shape; shapes)
+        {
+            NewtonCompoundCollisionAddSubCollision(newtonCollision, shape.newtonCollision);
+        }
+        NewtonCompoundCollisionEndAddRemove(newtonCollision);
+    }
+}
+
 class NewtonRigidBody: Owner
 {
     NewtonPhysicsWorld world;
     NewtonBody* newtonBody;
     int materialGroupId;
     float mass;
-    Vector3f inertia;
     Vector3f gravity = Vector3f(0.0f, -9.8f, 0.0f);
     Vector3f force = Vector3f(0.0f, 0.0f, 0.0f);
     Vector3f torque = Vector3f(0.0f, 0.0f, 0.0f);
@@ -333,8 +329,7 @@ class NewtonRigidBody: Owner
         NewtonBodySetUserData(newtonBody, cast(void*)this);
         this.groupId = world.defaultGroupId;
         this.mass = mass;
-        this.inertia = shape.inertia(mass);
-        NewtonBodySetMassMatrix(newtonBody, mass, inertia.x, inertia.y, inertia.z);
+        NewtonBodySetMassProperties(newtonBody, mass, shape.newtonCollision);
         NewtonBodySetForceAndTorqueCallback(newtonBody, &newtonBodyForceCallback);
         
         collisionCallback = &defaultCollisionCallback;
@@ -446,19 +441,35 @@ class NewtonBodyComponent: EntityComponent
 
 class NewtonCharacterComponent: EntityComponent
 {
-    NewtonSphereShape shape;
+    NewtonSphereShape lowerShape;
+    NewtonSphereShape upperShape;
+    NewtonCompoundShape shape;
     NewtonRigidBody rbody;
     NewtonRigidBody sensorBody;
-    enum float radius = 0.5f;
-    enum float mass = 80.0f;
+    float height;
+    float mass;
     bool onGround = false;
     Vector3f targetVelocity = Vector3f(0.0f, 0.0f, 0.0f);
     Matrix4x4f prevTransformation;
+    float radius;
+    float shapeRadius;
+    float eyeHeight;
     
-    this(EventManager em, Entity e, NewtonPhysicsWorld world)
+    this(EventManager em, Entity e, float height, float mass, NewtonPhysicsWorld world)
     {
         super(em, e);
-        shape = New!NewtonSphereShape(radius, world);
+        this.height = height;
+        this.mass = mass;
+        radius = height * 0.5f;
+        shapeRadius = radius * 0.5f;
+        eyeHeight = height * 0.5f;
+        lowerShape = New!NewtonSphereShape(shapeRadius, world);
+        lowerShape.setTransformation(translationMatrix(Vector3f(0.0f, -shapeRadius, 0.0f)));
+        upperShape = New!NewtonSphereShape(shapeRadius, world);
+        upperShape.setTransformation(translationMatrix(Vector3f(0.0f, shapeRadius, 0.0f)));
+        NewtonCollisionShape[2] shapes = [lowerShape, upperShape];
+        shape = New!NewtonCompoundShape(shapes, world);
+        
         rbody = world.createDynamicBody(shape, mass);
         rbody.groupId = world.kinematicGroupId;
         rbody.raycastable = false;
@@ -535,8 +546,25 @@ class NewtonCharacterComponent: EntityComponent
         }
     }
     
+    void duck()
+    {
+        // TODO
+        //eyeHeight = 0.0f;
+    }
+    
+    void unduck()
+    {
+        // TODO
+        //eyeHeight = height * 0.5f;
+    }
+    
     Vector3f position()
     {
         return rbody.position.xyz;
+    }
+    
+    Vector3f eyePoint()
+    {
+        return rbody.position.xyz + Vector3f(0.0f, eyeHeight, 0.0f);
     }
 }
