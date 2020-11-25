@@ -18,8 +18,6 @@ class TestScene: Scene
     OBJAsset aLevel;
     TextureAsset aGridTexture;
 
-    TextLine text;
-
     Camera camera;
     FirstPersonViewComponent fpview;
     Light sun;
@@ -33,6 +31,8 @@ class TestScene: Scene
 
     Entity eCharacter;
     NewtonCharacterComponent character;
+
+    TextLine text;
 
     this(Game game)
     {
@@ -78,6 +78,7 @@ class TestScene: Scene
         game.postProcessingRenderer.tonemapper = Tonemapper.Filmic;
         game.postProcessingRenderer.glowEnabled = true;
         game.postProcessingRenderer.fxaaEnabled = true;
+        game.postProcessingRenderer.motionBlurEnabled = true;
         game.postProcessingRenderer.glowEnabled = true;
         game.postProcessingRenderer.glowThreshold = 1.0f;
         game.postProcessingRenderer.glowIntensity = 0.3f;
@@ -198,7 +199,8 @@ class TestScene: Scene
         eText.drawable = text;
         eText.position = Vector3f(16.0f, 30.0f, 0.0f);
         
-        eventManager.showCursor(false);
+        eventManager.showCursor(true);
+        fpview.active = false;
     }
 
     override void onKeyDown(int key)
