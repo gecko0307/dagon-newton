@@ -25,4 +25,4 @@ jobs:
       with:
         compiler: ${{ matrix.dc }}
     - name: 'Build & Test'
-      run: dub build --compiler=$DC
+      run: dub build
