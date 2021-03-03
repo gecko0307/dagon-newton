@@ -76,7 +76,6 @@ class TestScene: Scene
         game.deferredRenderer.ssaoRadius = 0.25f;
         game.deferredRenderer.ssaoDenoise = 1.0f;
         game.postProcessingRenderer.tonemapper = Tonemapper.Filmic;
-        game.postProcessingRenderer.glowEnabled = true;
         game.postProcessingRenderer.fxaaEnabled = true;
         game.postProcessingRenderer.motionBlurEnabled = true;
         game.postProcessingRenderer.glowEnabled = true;
@@ -228,13 +227,13 @@ class TestScene: Scene
     void updateCharacter()
     {
         float speed = 6.0f;
-        if (eventManager.keyPressed[KEY_A]) character.move(camera.right, -speed);
-        if (eventManager.keyPressed[KEY_D]) character.move(camera.right, speed);
-        if (eventManager.keyPressed[KEY_W]) character.move(camera.direction, -speed);
-        if (eventManager.keyPressed[KEY_S]) character.move(camera.direction, speed);
-        if (eventManager.keyPressed[KEY_SPACE]) character.jump(1.0f);
-        if (eventManager.keyDown[KEY_LCTRL]) character.duck();
-        else character.unduck();
+        if (inputManager.getButton("left")) character.move(camera.right, -speed);
+        if (inputManager.getButton("right")) character.move(camera.right, speed);
+        if (inputManager.getButton("forward")) character.move(camera.direction, -speed);
+        if (inputManager.getButton("back")) character.move(camera.direction, speed);
+        if (inputManager.getButton("jump")) character.jump(1.0f);
+        //if (eventManager.keyDown[KEY_LCTRL]) character.duck();
+        //else character.unduck();
         character.updateVelocity();
     }
     
