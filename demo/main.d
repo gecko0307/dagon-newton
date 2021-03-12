@@ -30,7 +30,9 @@ class TestScene: Scene
 
     NewtonPhysicsWorld world;
     NewtonBodyComponent[] cubeBodyControllers;
-    size_t numCubes = 100;
+    size_t numCubes = 50;
+    NewtonBodyComponent[] sphereBodyControllers;
+    size_t numSpheres = 20;
 
     Entity eCharacter;
     NewtonCharacterComponent character;
@@ -47,6 +49,8 @@ class TestScene: Scene
     {
         if (cubeBodyControllers.length)
             Delete(cubeBodyControllers);
+        if (sphereBodyControllers.length)
+            Delete(sphereBodyControllers);
     }
 
     override void beforeLoad()
@@ -168,6 +172,20 @@ class TestScene: Scene
             eCube.position = Vector3f(3, i * 1.5, 5);
             auto b = world.createDynamicBody(box, 500.0f);
             cubeBodyControllers[i] = New!NewtonBodyComponent(eventManager, eCube, b);
+        }
+        
+        auto sSphere = New!ShapeSphere(1, 24, 16, false, assetManager);
+        auto sphere = New!NewtonSphereShape(1, world);
+        
+        sphereBodyControllers = New!(NewtonBodyComponent[])(numSpheres);
+        foreach(i; 0..sphereBodyControllers.length)
+        {
+            auto eSphere = addEntity();
+            eSphere.drawable = sSphere;
+            eSphere.material = materials[uniform(0, $)];
+            eSphere.position = Vector3f(-3, i * 1.5, 5);
+            auto b = world.createDynamicBody(sphere, 500.0f);
+            sphereBodyControllers[i] = New!NewtonBodyComponent(eventManager, eSphere, b);
         }
 
         eCharacter = addEntity();
