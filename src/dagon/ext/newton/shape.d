@@ -33,6 +33,7 @@ import dlib.math.vector;
 import dlib.math.matrix;
 import bindbc.newton;
 import dagon.graphics.mesh;
+import dagon.graphics.heightmap;
 import dagon.ext.newton.world;
 
 abstract class NewtonCollisionShape: Owner
@@ -121,5 +122,43 @@ class NewtonCompoundShape: NewtonCollisionShape
             NewtonCompoundCollisionAddSubCollision(newtonCollision, shape.newtonCollision);
         }
         NewtonCompoundCollisionEndAddRemove(newtonCollision);
+    }
+}
+
+class NewtonHeightmapShape: NewtonCollisionShape
+{
+    uint width;
+    uint height;
+    float[] elevationMap;
+    ubyte[] attributeMap;
+    
+    this(Heightmap heightmap, uint w, uint h, Vector3f scale, NewtonPhysicsWorld world)
+    {
+        super(world);
+        
+        width = w;
+        height = h;
+        
+        elevationMap = New!(float[])(width * height);
+        attributeMap = New!(ubyte[])(width * height);
+        
+        foreach(x; 0..width)
+        foreach(z; 0..height)
+        {
+            float y = heightmap.getHeight(
+                cast(float)x / cast(float)(width - 1),
+                cast(float)z / cast(float)(height - 1));
+            elevationMap[z * width + x] = y;
+            attributeMap[z * width + x] = 0; // TODO
+        }
+        
+        newtonCollision = NewtonCreateHeightFieldCollision(world.newtonWorld, 
+            width, height, 1, 0, elevationMap.ptr, cast(char*)attributeMap.ptr, scale.y, scale.x, scale.z, 0);
+    }
+    
+    ~this()
+    {
+        Delete(elevationMap);
+        Delete(attributeMap);
     }
 }
