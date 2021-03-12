@@ -177,8 +177,8 @@ class NewtonPhysicsWorld: Owner
 
     ~this()
     {
-        NewtonMaterialDestroyAllGroupID(newtonWorld);
         NewtonDestroyAllBodies(newtonWorld);
+        NewtonMaterialDestroyAllGroupID(newtonWorld);
         NewtonDestroy(newtonWorld);
     }
 }
