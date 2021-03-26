@@ -134,10 +134,23 @@ class NewtonRigidBody: Owner
     {
         return materialGroupId;
     }
-
+    
+    Vector3f worldCenterOfMass()
+    {
+        Vector3f centerOfMass;
+        NewtonBodyGetCentreOfMass(newtonBody, centerOfMass.arrayof.ptr);
+        return position.xyz + rotation.rotate(centerOfMass);
+    }
+    
     void addForce(Vector3f f)
     {
         force += f;
+    }
+    
+    void addForceAtPos(Vector3f f, Vector3f pos)
+    {
+        force += f;
+        torque += cross(position.xyz - worldCenterOfMass(), force);
     }
 
     void addTorque(Vector3f t)
