@@ -86,6 +86,23 @@ class NewtonSphereShape: NewtonCollisionShape
     }
 }
 
+class NewtonCylinderShape: NewtonCollisionShape
+{
+    float radius1;
+    float radius2;
+    float height;
+
+    this(float radius1, float radius2, float height, NewtonPhysicsWorld world)
+    {
+        super(world);
+        this.radius1 = radius1;
+        this.radius2 = radius2;
+        this.height = height;
+        newtonCollision = NewtonCreateCylinder(world.newtonWorld, radius1, radius2, height, 0, null);
+        NewtonCollisionSetUserData(newtonCollision, cast(void*)this);
+    }
+}
+
 class NewtonMeshShape: NewtonCollisionShape
 {
     this(Mesh mesh, NewtonPhysicsWorld world)
