@@ -32,7 +32,14 @@ freetype.dll
 newton.dll
 nuklear.dll
 SDL2.dll
+dgNewtonAvx.dll
+dgNewtonAvx2.dll
+dgNewtonSse4.2.dll
 
 # Scripts
 *.bat
 *.sh
+
+# Resolve
+.resolve/
+dependencies.json
