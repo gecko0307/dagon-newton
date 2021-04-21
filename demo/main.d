@@ -191,21 +191,6 @@ class TestScene: Scene
         eCharacter = addEntity();
         eCharacter.position = Vector3f(0, 2, 20);
         character = New!NewtonCharacterComponent(eventManager, eCharacter, 1.8f, 80.0f, world);
-
-        /*
-        auto boxFloor = New!NewtonBoxShape(Vector3f(50, 1, 50), world);
-        auto eFloor = addEntity();
-        eFloor.position = Vector3f(0, -0.5, 0);
-        auto floorBody = world.createStaticBody(boxFloor);
-        auto planeBodyController = New!NewtonBodyComponent(eventManager, eFloor, floorBody);
-        auto matPlane = New!Material(assetManager);
-        matPlane.diffuse = aGridTexture.texture;
-        matPlane.textureScale = Vector2f(5, 5);
-        matPlane.roughness = 0.9f;
-        auto ePlane = addEntity();
-        ePlane.drawable = New!ShapePlane(50, 50, 10, assetManager);
-        ePlane.material = matPlane;
-        */
         
         auto levelShape = New!NewtonMeshShape(aLevel.mesh, world);
         auto eLevel = addEntity();
@@ -219,22 +204,22 @@ class TestScene: Scene
         
         auto heightmap = New!ImageHeightmap(aHeightmap.image, 1.0f, assetManager);
         auto terrain = New!Terrain(128, 64, heightmap, assetManager);
-        auto eTerrain = addEntity();
-        eTerrain.dynamic = false;
-        eTerrain.solid = true;
-        eTerrain.material = addMaterial();
-        eTerrain.material.diffuse = aGrass.texture;
-        eTerrain.material.normal = aGrassNormal.texture;
-        eTerrain.material.textureScale = Vector2f(50, 50);
-        eTerrain.material.roughness = 0.8f;
-        eTerrain.drawable = terrain;
-        eTerrain.scaling = Vector3f(1.0f, 5.0f, 1.0f);
-        eTerrain.position = Vector3f(-64, -4, -64);
-        auto heightmapShape = New!NewtonHeightmapShape(heightmap, 128, 128, eTerrain.scaling, world);
+        Vector3f terrainScale = Vector3f(1.0f, 5.0f, 1.0f);
+        auto heightmapShape = New!NewtonHeightmapShape(heightmap, 128, 128, terrainScale, world);
         auto terrainBody = world.createStaticBody(heightmapShape);
-        auto eTerrain2 = addEntity();
-        eTerrain2.position = eTerrain.position;
-        auto terrainBodyController = New!NewtonBodyComponent(eventManager, eTerrain2, terrainBody);
+        auto eTerrain = addEntity();
+        eTerrain.position = Vector3f(-64, -4, -64);
+        auto terrainBodyController = New!NewtonBodyComponent(eventManager, eTerrain, terrainBody);
+        auto eTerrainVisual = addEntity(eTerrain);
+        eTerrainVisual.dynamic = false;
+        eTerrainVisual.solid = true;
+        eTerrainVisual.material = addMaterial();
+        eTerrainVisual.material.diffuse = aGrass.texture;
+        eTerrainVisual.material.normal = aGrassNormal.texture;
+        eTerrainVisual.material.textureScale = Vector2f(50, 50);
+        eTerrainVisual.material.roughness = 0.8f;
+        eTerrainVisual.drawable = terrain;
+        eTerrainVisual.scaling = terrainScale;
 
         text = New!TextLine(aFontDroidSans14.font, "0", assetManager);
         text.color = Color4f(1.0f, 1.0f, 1.0f, 0.7f);
@@ -276,8 +261,6 @@ class TestScene: Scene
         if (inputManager.getButton("forward")) character.move(camera.direction, -speed);
         if (inputManager.getButton("back")) character.move(camera.direction, speed);
         if (inputManager.getButton("jump")) character.jump(1.0f);
-        //if (eventManager.keyDown[KEY_LCTRL]) character.duck();
-        //else character.unduck();
         character.updateVelocity();
     }
     
