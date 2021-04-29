@@ -65,6 +65,7 @@ class NewtonRigidBody: Owner
     NewtonPhysicsWorld world;
     NewtonBody* newtonBody;
     int materialGroupId;
+    bool dynamic = false;
     float mass;
     Vector3f gravity = Vector3f(0.0f, -9.8f, 0.0f);
     Vector3f force = Vector3f(0.0f, 0.0f, 0.0f);

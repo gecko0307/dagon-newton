@@ -52,10 +52,14 @@ extern(C)
         NewtonRigidBody b = cast(NewtonRigidBody)NewtonBodyGetUserData(nbody);
         if (raycaster && b)
         {
-            Vector3f p = Vector3f(hitContact[0], hitContact[1], hitContact[2]);
-            Vector3f n = Vector3f(hitNormal[0], hitNormal[1], hitNormal[2]);
-            raycaster.onRayHit(b, p, n);
+            if (b.raycastable)
+            {
+                Vector3f p = Vector3f(hitContact[0], hitContact[1], hitContact[2]);
+                Vector3f n = Vector3f(hitNormal[0], hitNormal[1], hitNormal[2]);
+                return raycaster.onRayHit(b, p, n, intersectParam);
+            }
         }
+        
         return 1.0f;
     }
 
@@ -118,7 +122,7 @@ extern(C)
 
 interface NewtonRaycaster
 {
-    void onRayHit(NewtonRigidBody nbody, Vector3f hitPoint, Vector3f hitNormal);
+    float onRayHit(NewtonRigidBody nbody, Vector3f hitPoint, Vector3f hitNormal, float t);
 }
 
 class NewtonPhysicsWorld: Owner
@@ -161,13 +165,16 @@ class NewtonPhysicsWorld: Owner
     NewtonRigidBody createDynamicBody(NewtonCollisionShape shape, float mass)
     {
         NewtonRigidBody b = New!NewtonRigidBody(shape, mass, this, this);
+        b.dynamic = true;
         // TODO: store a list of bodies
         return b;
     }
 
     NewtonRigidBody createStaticBody(NewtonCollisionShape shape)
     {
-        return createDynamicBody(shape, 0.0f);
+        auto b = createDynamicBody(shape, 0.0f);
+        b.dynamic = false;
+        return b;
     }
 
     void raycast(Vector3f pstart, Vector3f pend, NewtonRaycaster raycaster)
